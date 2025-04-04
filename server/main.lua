@@ -481,7 +481,11 @@ Vein = {
         local highestRank = Config.Ranks[1] -- Default to first rank
         
         for _, rank in ipairs(Config.Ranks) do
-            if xp >= rank.xpRequired then
+            -- Check both possible property names
+            local requiredXP = rank.xpNeeded or rank.xpRequired
+            
+            -- Add safety check to make sure requiredXP is not nil
+            if requiredXP ~= nil and xp >= requiredXP then
                 highestRank = rank
             else
                 break -- Exit loop once we find a rank with higher XP requirement
@@ -495,12 +499,28 @@ Vein = {
     GetPaymentForRank = function(rankName)
         for _, rank in ipairs(Config.Ranks) do
             if rank.name == rankName then
-                return rank.payRate
+                -- Handle both possible payment configurations
+                if rank.payment then
+                    -- First config style (payment.min/max)
+                    local min = rank.payment.min
+                    local max = rank.payment.max
+                    return math.random(min, max)
+                elseif rank.payRate then
+                    -- Second config style (payRate)
+                    return rank.payRate
+                end
             end
         end
         
         -- Default to apprentice if rank not found
-        return Config.Ranks[1].payRate
+        if Config.Ranks[1].payment then
+            return math.random(
+                Config.Ranks[1].payment.min,
+                Config.Ranks[1].payment.max
+            )
+        else
+            return Config.Ranks[1].payRate or 15 -- Fallback to hardcoded default
+        end
     end
 }
 

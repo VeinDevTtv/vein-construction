@@ -114,7 +114,15 @@ end)
 -- Register events for random occurrences and special cases
 -- Notification for rank up
 RegisterNetEvent('vein-construction:client:rankUp', function(newRank)
-    SendNotification('Congratulations! You have been promoted to ' .. newRank, 'success')
+    -- Check if newRank is a table or string
+    local rankName = type(newRank) == 'table' and (newRank.label or newRank.name) or newRank
+    
+    -- Make sure we have a valid string for the notification
+    if not rankName or type(rankName) ~= 'string' then
+        rankName = 'a new rank'
+    end
+    
+    SendNotification('Congratulations! You have been promoted to ' .. rankName, 'success')
     
     -- Play celebration sound
     PlaySoundFrontend(-1, "MEDAL_UP", "HUD_MINI_GAME_SOUNDSET", 1)
