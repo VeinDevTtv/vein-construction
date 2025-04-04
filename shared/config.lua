@@ -2,8 +2,8 @@ Config = {}
 
 -- General settings
 Config.Debug = false -- Set to true for debug prints
-Config.UseOxTarget = true -- Set to false to use qb-target instead
-Config.UseOxInventory = true -- Set to false to use qb-inventory instead
+Config.UseOxTarget = false -- Set to true to use ox_target instead of qb-target
+Config.UseOxInventory = false -- Set to true to use ox_inventory instead of qb-inventory
 
 -- Job settings
 Config.JobName = 'construction'

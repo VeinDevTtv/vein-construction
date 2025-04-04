@@ -1,18 +1,23 @@
 fx_version 'cerulean'
 game 'gta5'
 
-author 'Your Name'
-description 'Advanced Construction Job for FiveM using QBCore'
+author 'Vein'
+description 'Construction Job for FiveM using QBCore'
 version '1.0.0'
 
 shared_scripts {
-    '@ox_lib/init.lua',
+    '@qb-core/shared/locale.lua',
+    'locales/en.lua',
     'shared/config.lua',
-    'shared/main.lua',
-    'locales/en.lua'
+    'shared/utils.lua'
 }
 
 client_scripts {
+    '@PolyZone/client.lua',
+    '@PolyZone/BoxZone.lua',
+    '@PolyZone/EntityZone.lua',
+    '@PolyZone/CircleZone.lua',
+    '@PolyZone/ComboZone.lua',
     'client/main.lua',
     'client/tasks.lua',
     'client/events.lua',
@@ -25,11 +30,15 @@ server_scripts {
     'server/progression.lua'
 }
 
+lua54 'yes'
+
 dependencies {
     'qb-core',
-    'ox_lib',
-    'ox_inventory',
-    'ox_target'
+    'PolyZone'
 }
 
-lua54 'yes' 
+escrow_ignore {
+    'shared/config.lua',
+    'locales/*.lua',
+    'README.md'
+} 
