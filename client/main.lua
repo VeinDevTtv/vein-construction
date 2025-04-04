@@ -293,99 +293,105 @@ function ShowRankInformation()
         })
     end
     
-    lib.registerContext({
-        id = 'rank_information',
-        title = 'Job Ranks',
-        menu = 'construction_job_info',
-        options = options
-    })
-    
-    lib.showContext('rank_information')
+    ShowMenu('rank_information', 'Job Ranks', options, 'construction_job_info')
 end
 
 -- Show task information
 function ShowTaskInformation()
-    lib.registerContext({
-        id = 'task_information',
-        title = 'Construction Tasks',
-        menu = 'construction_job_info',
-        options = {
-            {
-                title = 'Lifting Materials',
-                description = 'Pick up and carry materials to designated areas',
-                icon = 'fas fa-weight-hanging'
-            },
-            {
-                title = 'Hammering & Drilling',
-                description = 'Secure beams and construct walls',
-                icon = 'fas fa-hammer'
-            },
-            {
-                title = 'Welding',
-                description = 'Fuse metal beams together',
-                icon = 'fas fa-fire'
-            },
-            {
-                title = 'Roadwork',
-                description = 'Fix potholes and mark road lanes',
-                icon = 'fas fa-road'
-            }
+    local options = {
+        {
+            title = 'Lifting Materials',
+            description = 'Pick up and carry materials to designated areas',
+            icon = 'fas fa-weight-hanging'
+        },
+        {
+            title = 'Hammering & Drilling',
+            description = 'Secure beams and construct walls',
+            icon = 'fas fa-hammer'
+        },
+        {
+            title = 'Welding',
+            description = 'Fuse metal beams together',
+            icon = 'fas fa-fire'
+        },
+        {
+            title = 'Roadwork',
+            description = 'Fix potholes and mark road lanes',
+            icon = 'fas fa-road'
         }
-    })
+    }
     
-    lib.showContext('task_information')
+    ShowMenu('task_information', 'Construction Tasks', options, 'construction_job_info')
 end
 
 -- Show equipment information
 function ShowEquipmentInformation()
-    lib.registerContext({
-        id = 'equipment_information',
-        title = 'Required Equipment',
-        menu = 'construction_job_info',
-        options = {
-            {
-                title = 'Tools',
-                description = 'Hammer, Drill, Welding Torch, Shovel, Paint Roller',
-                icon = 'fas fa-tools'
-            },
-            {
-                title = 'Safety Gear',
-                description = 'Construction Helmet, Safety Vest, Work Gloves',
-                icon = 'fas fa-hard-hat'
-            },
-            {
-                title = 'Tool Durability',
-                description = 'Tools can break and need to be repaired or replaced',
-                icon = 'fas fa-wrench'
-            }
+    local options = {
+        {
+            title = 'Tools',
+            description = 'Hammer, Drill, Welding Torch, Shovel, Paint Roller',
+            icon = 'fas fa-tools'
+        },
+        {
+            title = 'Safety Gear',
+            description = 'Construction Helmet, Safety Vest, Work Gloves',
+            icon = 'fas fa-hard-hat'
+        },
+        {
+            title = 'Tool Durability',
+            description = 'Tools can break and need to be repaired or replaced',
+            icon = 'fas fa-wrench'
         }
-    })
+    }
     
-    lib.showContext('equipment_information')
+    ShowMenu('equipment_information', 'Required Equipment', options, 'construction_job_info')
 end
 
 -- Apply for the job
 function ApplyForJob()
-    lib.progressBar({
-        duration = 5000,
-        label = 'Filling out application...',
-        useWhileDead = false,
-        canCancel = true,
-        disable = {
-            car = true,
-            move = true
-        },
-        anim = {
-            dict = 'missheistdockssetup1clipboard@base',
-            clip = 'base'
-        },
-        prop = {
-            model = 'prop_notepad_01',
+    if lib then
+        lib.progressBar({
+            duration = 5000,
+            label = 'Filling out application...',
+            useWhileDead = false,
+            canCancel = true,
+            disable = {
+                car = true,
+                move = true
+            },
+            anim = {
+                dict = 'missheistdockssetup1clipboard@base',
+                clip = 'base'
+            },
+            prop = {
+                model = 'prop_notepad_01',
+                bone = 18905,
+                pos = vec3(0.1, 0.02, 0.05),
+                rot = vec3(10.0, 0.0, 0.0)
+            }
+        })
+    else
+        -- Fallback to QBCore progress
+        QBCore.Functions.Progressbar("fill_application", "Filling out application...", 5000, false, true, {
+            disableMovement = true,
+            disableCarMovement = true,
+            disableMouse = false,
+            disableCombat = true,
+        }, {
+            animDict = "missheistdockssetup1clipboard@base",
+            anim = "base",
+            flags = 49,
+        }, {
+            model = "prop_notepad_01",
             bone = 18905,
-            pos = vec3(0.1, 0.02, 0.05),
-            rot = vec3(10.0, 0.0, 0.0)
-        }
-    })
+            coords = { x = 0.1, y = 0.02, z = 0.05 },
+            rotation = { x = 10.0, y = 0.0, z = 0.0 },
+        }, {}, function() -- Done
+            -- Done callback
+        end, function() -- Cancel
+            -- Cancel callback
+        end)
+    end
     
     -- Set the job
     TriggerServerEvent('vein-construction:server:setJob')
@@ -569,13 +575,17 @@ RegisterNetEvent('vein-construction:client:showRankInfo', function(rankName, xp,
         description = description .. '\nCommission: ' .. (currentRank.commission * 100) .. '%'
     end
     
-    lib.notify({
-        title = title,
-        description = description,
-        type = 'info',
-        position = 'top',
-        duration = 5000
-    })
+    if lib then
+        lib.notify({
+            title = title,
+            description = description,
+            type = 'info',
+            position = 'top',
+            duration = 5000
+        })
+    else
+        QBCore.Functions.Notify(title .. '\n' .. description, 'primary', 5000)
+    end
 end)
 
 -- Check tool durability
@@ -623,14 +633,7 @@ function CheckToolDurability()
         end
     })
     
-    lib.registerContext({
-        id = 'tool_durability',
-        title = 'Tool Durability',
-        menu = 'job_management',
-        options = toolList
-    })
-    
-    lib.showContext('tool_durability')
+    ShowMenu('tool_durability', 'Tool Durability', toolList, 'job_management')
 end
 
 -- Repair all tools
@@ -648,60 +651,50 @@ function RepairTools()
         end
     end
     
-    lib.registerContext({
-        id = 'repair_tools',
-        title = 'Repair Tools',
-        menu = 'tool_durability',
-        options = {
-            {
-                title = 'Confirm Repair',
-                description = 'Cost: $' .. totalCost,
-                icon = 'fas fa-check',
-                onSelect = function()
-                    TriggerServerEvent('vein-construction:server:repairTools', totalCost)
-                    toolDurabilities = {}
-                end
-            },
-            {
-                title = 'Cancel',
-                icon = 'fas fa-times',
-                onSelect = function()
-                    lib.showContext('tool_durability')
-                end
-            }
+    local options = {
+        {
+            title = 'Confirm Repair',
+            description = 'Cost: $' .. totalCost,
+            icon = 'fas fa-check',
+            onSelect = function()
+                TriggerServerEvent('vein-construction:server:repairTools', totalCost)
+                toolDurabilities = {}
+            end
+        },
+        {
+            title = 'Cancel',
+            icon = 'fas fa-times',
+            onSelect = function()
+                ShowMenu('tool_durability', 'Tool Durability', {}, 'job_management')
+            end
         }
-    })
+    }
     
-    lib.showContext('repair_tools')
+    ShowMenu('repair_tools', 'Repair Tools', options, 'tool_durability')
 end
 
 -- Quit job
 function QuitJob()
-    lib.registerContext({
-        id = 'quit_job',
-        title = 'Quit Job',
-        menu = 'job_management',
-        options = {
-            {
-                title = 'Confirm Resignation',
-                description = 'Are you sure you want to quit?',
-                icon = 'fas fa-check',
-                onSelect = function()
-                    TriggerServerEvent('vein-construction:server:quitJob')
-                    ResetJobStatus()
-                end
-            },
-            {
-                title = 'Cancel',
-                icon = 'fas fa-times',
-                onSelect = function()
-                    lib.showContext('job_management')
-                end
-            }
+    local options = {
+        {
+            title = 'Confirm Resignation',
+            description = 'Are you sure you want to quit?',
+            icon = 'fas fa-check',
+            onSelect = function()
+                TriggerServerEvent('vein-construction:server:quitJob')
+                ResetJobStatus()
+            end
+        },
+        {
+            title = 'Cancel',
+            icon = 'fas fa-times',
+            onSelect = function()
+                ShowMenu('job_management', 'Job Management', {}, nil)
+            end
         }
-    })
+    }
     
-    lib.showContext('quit_job')
+    ShowMenu('quit_job', 'Quit Job', options, 'job_management')
 end
 
 -- Select a task at the current site
@@ -774,13 +767,7 @@ function SelectTask()
         })
     end
     
-    lib.registerContext({
-        id = 'select_task',
-        title = 'Select Task',
-        options = options
-    })
-    
-    lib.showContext('select_task')
+    ShowMenu('select_task', 'Select Task', options)
 end
 
 -- Start task (after rank check from server)

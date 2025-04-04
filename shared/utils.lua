@@ -29,16 +29,19 @@ end
 
 -- Check if player has a specific item
 Vein.HasItem = function(player, item)
+    -- Check if we're on client or server
+    local isClient = IsDuplicityVersion() == false
+    
     if Config.UseOxInventory then
         -- Use ox_inventory to check for item
-        if client then
+        if isClient then
             return exports.ox_inventory:GetItemCount(item) > 0
         else
             return exports.ox_inventory:GetItemCount(player.source, item) > 0
         end
     else
         -- Use QB-Core to check for item
-        if client then
+        if isClient then
             local hasItem = QBCore.Functions.HasItem(item)
             return hasItem
         else

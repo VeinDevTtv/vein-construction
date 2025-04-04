@@ -1,3 +1,17 @@
+-- Initialize QBCore
+local QBCore = exports['qb-core']:GetCoreObject()
+local PlayerData = {}
+local isOnDuty = false
+
+-- Initialize player data
+RegisterNetEvent('QBCore:Client:OnPlayerLoaded', function()
+    PlayerData = QBCore.Functions.GetPlayerData()
+end)
+
+RegisterNetEvent('QBCore:Client:OnJobUpdate', function(JobInfo)
+    PlayerData.job = JobInfo
+end)
+
 -- NPC Variables
 local jobNPC = nil
 
@@ -101,7 +115,7 @@ function AddOxInteractions()
                     ToggleDuty()
                 end,
                 canInteract = function()
-                    return PlayerData.job and PlayerData.job.name == Config.JobName
+                    return PlayerData and PlayerData.job and PlayerData.job.name == Config.JobName
                 end
             }
         }
@@ -126,7 +140,7 @@ function AddOxInteractions()
                     RepairTools()
                 end,
                 canInteract = function()
-                    return PlayerData.job and PlayerData.job.name == Config.JobName
+                    return PlayerData and PlayerData.job and PlayerData.job.name == Config.JobName
                 end
             }
         }
@@ -143,7 +157,7 @@ function AddQBInteractions()
                 icon = "fas fa-hard-hat",
                 label = "Apply for Construction Job",
                 canInteract = function()
-                    return not PlayerData.job or PlayerData.job.name ~= Config.JobName
+                    return not PlayerData or not PlayerData.job or PlayerData.job.name ~= Config.JobName
                 end
             },
             {
@@ -152,7 +166,7 @@ function AddQBInteractions()
                 icon = "fas fa-clipboard-list",
                 label = "Construction Job Management",
                 canInteract = function()
-                    return PlayerData.job and PlayerData.job.name == Config.JobName
+                    return PlayerData and PlayerData.job and PlayerData.job.name == Config.JobName
                 end
             },
             {
@@ -184,7 +198,7 @@ function AddQBInteractions()
                     end
                 end,
                 canInteract = function()
-                    return PlayerData.job and PlayerData.job.name == Config.JobName
+                    return PlayerData and PlayerData.job and PlayerData.job.name == Config.JobName
                 end
             },
         },
@@ -203,7 +217,7 @@ function AddQBInteractions()
                 icon = "fas fa-tools",
                 label = "Repair Tools",
                 canInteract = function()
-                    return PlayerData.job and PlayerData.job.name == Config.JobName
+                    return PlayerData and PlayerData.job and PlayerData.job.name == Config.JobName
                 end
             },
         },

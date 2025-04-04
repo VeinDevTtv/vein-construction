@@ -275,4 +275,24 @@ end)
 
 RegisterNetEvent('QBCore:Client:OnJobUpdate', function(JobInfo)
     PlayerData.job = JobInfo
-end) 
+end)
+
+-- Show rank information
+function ShowRankInformation()
+    local options = {}
+    
+    for _, rank in ipairs(Config.Ranks) do
+        local description = 'XP Needed: ' .. rank.xpNeeded .. '\nPay Range: $' .. rank.payment.min .. ' - $' .. rank.payment.max
+        if rank.commission then
+            description = description .. '\nCommission: ' .. (rank.commission * 100) .. '%'
+        end
+        
+        table.insert(options, {
+            title = rank.label,
+            description = description,
+            icon = 'fas fa-user-tie'
+        })
+    end
+    
+    ShowMenu('rank_information', 'Job Ranks', options, 'construction_job_info')
+end 
