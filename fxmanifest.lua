@@ -8,7 +8,10 @@ version '1.0.0'
 shared_scripts {
     '@qb-core/shared/locale.lua',
     'locales/en.lua',
-    'config.lua'
+    'shared/config.lua',
+    'shared/construction_items.lua',
+    'shared/utils.lua',
+    'shared/main.lua'
 }
 
 client_scripts {
@@ -41,7 +44,8 @@ files {
 
 dependency {
     'qb-core',
-    'oxmysql'
+    'oxmysql',
+    'PolyZone'
 }
 
 -- List ox_lib as an optional dependency to help with loading order
@@ -49,6 +53,9 @@ lua54 'yes'
 
 escrow_ignore {
     'shared/config.lua',
+    'shared/construction_items.lua',
+    'shared/utils.lua',
+    'shared/main.lua',
     'locales/*.lua',
     'README.md'
 }

@@ -370,7 +370,8 @@ function ViewProjectDetails(project)
         {
             title = 'Project Details',
             description = 'Type: ' .. project.type .. '\nBudget: $' .. project.budget .. '\nProgress: ' .. project.progress .. '%',
-            icon = 'fas fa-info-circle'
+            icon = 'fas fa-info-circle',
+            onSelect = function() end
         },
         {
             title = 'Check on Project',

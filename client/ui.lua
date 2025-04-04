@@ -465,6 +465,23 @@ function SafeRegisterContext(menuData)
         menuData.options = {}
     end
     
+    -- Validate each option to ensure it's properly structured
+    for i, option in ipairs(menuData.options) do
+        if type(option) ~= 'table' then
+            print('WARNING: Option at index', i, 'is not a table, replacing with default option')
+            menuData.options[i] = {title = 'Invalid Option'}
+        elseif not option.title then
+            print('WARNING: Option at index', i, 'has no title, adding default title')
+            option.title = 'Option ' .. i
+        end
+        
+        -- Ensure onSelect is a function if present
+        if option.onSelect ~= nil and type(option.onSelect) ~= 'function' then
+            print('WARNING: Option "' .. option.title .. '" has invalid onSelect (not a function), removing')
+            option.onSelect = nil
+        end
+    end
+    
     -- Print menu data for debugging
     print('Registering menu:', menuData.id)
     print('Title:', menuData.title)
@@ -480,6 +497,26 @@ function SafeRegisterContext(menuData)
     
     if not success then
         print('ERROR: Failed to register context menu:', result)
+        -- Debug output the menu structure for troubleshooting
+        print('Menu structure that failed:')
+        for key, value in pairs(menuData) do
+            if key ~= 'options' then
+                print('  ' .. key .. ':', value)
+            else
+                print('  options: [table with ' .. #value .. ' items]')
+                -- Print first option as example
+                if #value > 0 then
+                    print('    First option:')
+                    for k, v in pairs(value[1]) do
+                        if type(v) ~= 'function' then
+                            print('      ' .. k .. ':', v)
+                        else
+                            print('      ' .. k .. ': [function]')
+                        end
+                    end
+                end
+            end
+        end
         return false
     end
     
@@ -1240,26 +1277,36 @@ function TestOxLibMenu()
         options = {
             {
                 title = 'Test Option',
-                description = 'This is a test'
+                description = 'This is a test',
+                onSelect = function()
+                    print('Test option selected')
+                end
             }
         }
     }
     
     print('Attempting to register test menu...')
-    local success = lib.registerContext(testMenu)
     
-    if success == false then
-        print('Failed to register test menu')
+    -- Use pcall to catch any errors
+    local success, result = pcall(function()
+        return lib.registerContext(testMenu)
+    end)
+    
+    if not success then
+        print('Failed to register test menu with error:', result)
         return false
     end
     
     print('Test menu registered successfully')
     print('Attempting to show test menu...')
     
-    local showSuccess = lib.showContext('test_menu')
+    -- Use pcall to catch any errors when showing the menu
+    local showSuccess, showResult = pcall(function()
+        return lib.showContext('test_menu')
+    end)
     
-    if showSuccess == false then
-        print('Failed to show test menu')
+    if not showSuccess then
+        print('Failed to show test menu with error:', showResult)
         return false
     end
     
