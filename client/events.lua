@@ -94,6 +94,12 @@ function ShowMenu(id, title, options, parent)
     end
 end
 
+-- Register an event to expose the ShowMenu function
+RegisterNetEvent('vein-construction:internal:showMenu')
+AddEventHandler('vein-construction:internal:showMenu', function(id, title, options, parent)
+    ShowMenu(id, title, options, parent)
+end)
+
 -- Register events for random occurrences and special cases
 -- Notification for rank up
 RegisterNetEvent('vein-construction:client:rankUp', function(newRank)
