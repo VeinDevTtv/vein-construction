@@ -176,7 +176,13 @@ function AddQBInteractions()
                 type = "client",
                 event = "vein-construction:client:toggleDuty",
                 icon = "fas fa-clock",
-                label = "Toggle Duty",
+                label = function()
+                    if isOnDuty then
+                        return "Clock Out"
+                    else
+                        return "Clock In"
+                    end
+                end,
                 canInteract = function()
                     return PlayerData.job and PlayerData.job.name == Config.JobName
                 end

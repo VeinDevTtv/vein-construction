@@ -7,8 +7,8 @@ local PlayerData = {}
 -- Active projects
 local ActiveProjects = {}
 
--- Register server callback for ox_inventory
-if GetResourceState('ox_inventory') ~= 'missing' then
+-- Register server callback for inventory shop
+if Config.UseOxInventory and GetResourceState('ox_inventory') ~= 'missing' then
     exports.ox_inventory:registerShop('construction', {
         name = 'Construction Shop',
         inventory = {
@@ -33,6 +33,10 @@ if GetResourceState('ox_inventory') ~= 'missing' then
             { name = 'asphalt_bucket', price = 100 }
         }
     })
+else
+    -- Setup for QB-Inventory
+    -- Shop items are handled on the client side for QB-Inventory
+    -- Nothing extra needed here as the client triggers "inventory:server:OpenInventory"
 end
 
 -- Initialize player data when they join
