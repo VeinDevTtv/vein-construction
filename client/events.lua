@@ -24,6 +24,53 @@ function SendNotification(title, message, type, icon)
     end
 end
 
+-- Function to show a menu based on what's available
+function ShowMenu(id, title, options, parent)
+    if lib then
+        -- Use ox_lib context menu
+        lib.registerContext({
+            id = id,
+            title = title,
+            menu = parent,
+            options = options
+        })
+        
+        lib.showContext(id)
+    else
+        -- Use QBCore menu as fallback
+        local menuItems = {}
+        for i, option in ipairs(options) do
+            table.insert(menuItems, {
+                header = option.title,
+                txt = option.description or '',
+                icon = option.icon,
+                params = {
+                    event = option.event,
+                    args = option.args,
+                    isAction = option.onSelect ~= nil,
+                    action = option.onSelect
+                }
+            })
+        end
+        
+        QBCore.UI.Menu.Open('default', GetCurrentResourceName(), id, {
+            title = title,
+            align = 'top-left',
+            elements = menuItems
+        }, function(data, menu)
+            local selected = options[data.current.value]
+            if selected.onSelect then
+                selected.onSelect()
+            end
+        end, function(data, menu)
+            menu.close()
+            if parent then
+                ShowMenu(parent, '', {}, nil) -- Reopen parent menu
+            end
+        end)
+    end
+end
+
 -- Register events for random occurrences and special cases
 -- Notification for rank up
 RegisterNetEvent('vein-construction:client:rankUp', function(newRank)
@@ -100,53 +147,6 @@ RegisterNetEvent('vein-construction:client:siteManagerResponse', function(isSite
     
     OpenProjectMenu()
 end)
-
--- Function to show a menu based on what's available
-function ShowMenu(id, title, options, parent)
-    if lib then
-        -- Use ox_lib context menu
-        lib.registerContext({
-            id = id,
-            title = title,
-            menu = parent,
-            options = options
-        })
-        
-        lib.showContext(id)
-    else
-        -- Use QBCore menu as fallback
-        local menuItems = {}
-        for i, option in ipairs(options) do
-            table.insert(menuItems, {
-                header = option.title,
-                txt = option.description or '',
-                icon = option.icon,
-                params = {
-                    event = option.event,
-                    args = option.args,
-                    isAction = option.onSelect ~= nil,
-                    action = option.onSelect
-                }
-            })
-        end
-        
-        QBCore.UI.Menu.Open('default', GetCurrentResourceName(), id, {
-            title = title,
-            align = 'top-left',
-            elements = menuItems
-        }, function(data, menu)
-            local selected = options[data.current.value]
-            if selected.onSelect then
-                selected.onSelect()
-            end
-        end, function(data, menu)
-            menu.close()
-            if parent then
-                ShowMenu(parent, '', {}, nil) -- Reopen parent menu
-            end
-        end)
-    end
-end
 
 -- Project management menu for Site Managers
 function OpenProjectMenu()
@@ -295,4 +295,4 @@ function ShowRankInformation()
     end
     
     ShowMenu('rank_information', 'Job Ranks', options, 'construction_job_info')
-end 
+end

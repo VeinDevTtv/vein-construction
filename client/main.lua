@@ -450,13 +450,7 @@ function OpenJobManagementMenu()
         end
     })
     
-    lib.registerContext({
-        id = 'job_management',
-        title = 'Job Management',
-        options = options
-    })
-    
-    lib.showContext('job_management')
+    ShowMenu('job_management', 'Job Management', options)
 end
 
 -- Toggle duty status
