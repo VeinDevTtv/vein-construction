@@ -57,34 +57,28 @@ Citizen.CreateThread(function()
     -- Check if ox_lib is started
     if GetResourceState('ox_lib') == 'started' then
         hasOxLib = true
+        
+        -- Try to get the export
         lib = exports['ox_lib']
         
-        -- Make sure the lib export is fully initialized
-        local maxAttempts = 10
-        local attempts = 0
-        
-        while attempts < maxAttempts do
-            attempts = attempts + 1
-            
-            -- Check if we can access functions in the export
-            if lib and type(lib) == 'table' and type(lib.registerContext) == 'function' then
-                print('ox_lib fully initialized in main module after', attempts, 'attempts')
-                libInitialized = true
-                break
-            end
-            
-            print('Waiting for ox_lib to fully initialize... attempt', attempts)
-            Citizen.Wait(500)
+        -- Also check if it's been set globally
+        if not lib and _G.lib then
+            lib = _G.lib
         end
         
-        if not libInitialized then
-            print('WARNING: ox_lib did not fully initialize after', maxAttempts, 'attempts')
+        -- Check if lib is fully initialized
+        if lib and type(lib.registerContext) == 'function' then
+            print('ox_lib fully initialized in main module')
+            libInitialized = true
+        else
+            print('WARNING: ox_lib export obtained but registerContext not available')
         end
     end
     
     print('ox_lib detection status in main module:')
     print('  - Resource detected:', hasOxLib)
-    print('  - Fully initialized:', libInitialized)
+    print('  - Lib export obtained:', lib ~= nil)
+    print('  - Functions available:', libInitialized)
 end)
 
 -- Initialize the script
@@ -536,61 +530,52 @@ function OpenJobManagementMenu()
     end)
     
     -- Function to safely use ox_lib
-    function SafelyUseOxLib(action, ...)
+    function SafelyUseOxLib(action, param)
+        if not action then
+            print('ERROR: No action provided to SafelyUseOxLib')
+            return nil
+        end
+        
+        -- Ensure param is a table if required for certain actions
+        if action == 'registerContext' and not param then
+            print('ERROR: registerContext requires a parameter table')
+            return nil
+        elseif action == 'registerContext' and type(param) ~= 'table' then
+            print('ERROR: registerContext parameter must be a table, got', type(param))
+            return nil
+        elseif action == 'registerContext' and type(param.options) ~= 'table' then
+            print('ERROR: registerContext options must be a table, got', type(param.options))
+            return nil
+        end
+        
         if hasOxLib and lib and libInitialized then
-            if action == 'hideContext' then
-                if type(lib.hideContext) ~= "function" then
-                    print('ox_lib.hideContext is not a function, type:', type(lib.hideContext))
-                    return nil
-                end
-                return lib.hideContext(...)
-            elseif action == 'registerContext' then
-                if type(lib.registerContext) ~= "function" then
-                    print('ox_lib.registerContext is not a function, type:', type(lib.registerContext))
-                    return nil
-                end
-                return lib.registerContext(...)
-            elseif action == 'showContext' then
-                if type(lib.showContext) ~= "function" then
-                    print('ox_lib.showContext is not a function, type:', type(lib.showContext))
-                    return nil
-                end
-                return lib.showContext(...)
-            elseif action == 'alertDialog' then
-                if type(lib.alertDialog) ~= "function" then
-                    print('ox_lib.alertDialog is not a function, type:', type(lib.alertDialog))
-                    return nil
-                end
-                return lib.alertDialog(...)
-            elseif action == 'progressBar' then
-                if type(lib.progressBar) ~= "function" then
-                    print('ox_lib.progressBar is not a function, type:', type(lib.progressBar))
-                    return nil
-                end
-                return lib.progressBar(...)
-            elseif action == 'notify' then
-                if type(lib.notify) ~= "function" then
-                    print('ox_lib.notify is not a function, type:', type(lib.notify))
-                    return nil
-                end
-                return lib.notify(...)
+            if action == 'hideContext' and type(lib.hideContext) == "function" then
+                return lib.hideContext()
+            elseif action == 'registerContext' and type(lib.registerContext) == "function" then
+                -- Final safety check for options table
+                if not param.options then param.options = {} end
+                return lib.registerContext(param)
+            elseif action == 'showContext' and type(lib.showContext) == "function" then
+                return lib.showContext(param)
+            elseif action == 'alertDialog' and type(lib.alertDialog) == "function" then
+                return lib.alertDialog(param)
+            elseif action == 'progressBar' and type(lib.progressBar) == "function" then
+                return lib.progressBar(param)
+            elseif action == 'notify' and type(lib.notify) == "function" then
+                return lib.notify(param)
+            elseif action == 'showTextUI' and type(lib.showTextUI) == "function" then
+                return lib.showTextUI(param)
+            elseif action == 'hideTextUI' and type(lib.hideTextUI) == "function" then
+                return lib.hideTextUI()
             else
-                print('Unknown action:', action)
+                print('Unknown action or method not available:', action)
                 return nil
             end
         else
-            -- Debug what's missing
             print('ox_lib not available for action:', action)
             print('hasOxLib:', hasOxLib)
             print('lib exists:', lib ~= nil)
             print('libInitialized:', libInitialized)
-            if lib then
-                print('lib type:', type(lib))
-                print('Available functions:')
-                for k, v in pairs(lib) do
-                    print('  -', k, type(v))
-                end
-            end
             return nil
         end
     end

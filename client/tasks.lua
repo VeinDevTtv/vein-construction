@@ -50,24 +50,43 @@ Citizen.CreateThread(function()
 end)
 
 -- Function to safely use ox_lib
-function SafelyUseOxLib(action, ...)
+function SafelyUseOxLib(action, param)
+    if not action then
+        print('ERROR: No action provided to SafelyUseOxLib')
+        return nil
+    end
+    
+    -- Ensure param is a table if required for certain actions
+    if action == 'registerContext' and not param then
+        print('ERROR: registerContext requires a parameter table')
+        return nil
+    elseif action == 'registerContext' and type(param) ~= 'table' then
+        print('ERROR: registerContext parameter must be a table, got', type(param))
+        return nil
+    elseif action == 'registerContext' and type(param.options) ~= 'table' then
+        print('ERROR: registerContext options must be a table, got', type(param.options))
+        return nil
+    end
+    
     if hasOxLib and lib and libInitialized then
         if action == 'hideContext' and type(lib.hideContext) == "function" then
-            return lib.hideContext(...)
+            return lib.hideContext()
         elseif action == 'registerContext' and type(lib.registerContext) == "function" then
-            return lib.registerContext(...)
+            -- Final safety check for options table
+            if not param.options then param.options = {} end
+            return lib.registerContext(param)
         elseif action == 'showContext' and type(lib.showContext) == "function" then
-            return lib.showContext(...)
+            return lib.showContext(param)
         elseif action == 'alertDialog' and type(lib.alertDialog) == "function" then
-            return lib.alertDialog(...)
+            return lib.alertDialog(param)
         elseif action == 'progressBar' and type(lib.progressBar) == "function" then
-            return lib.progressBar(...)
+            return lib.progressBar(param)
         elseif action == 'notify' and type(lib.notify) == "function" then
-            return lib.notify(...)
+            return lib.notify(param)
         elseif action == 'showTextUI' and type(lib.showTextUI) == "function" then
-            return lib.showTextUI(...)
+            return lib.showTextUI(param)
         elseif action == 'hideTextUI' and type(lib.hideTextUI) == "function" then
-            return lib.hideTextUI(...)
+            return lib.hideTextUI()
         else
             print('Unknown action or method not available:', action)
             return nil
@@ -394,26 +413,47 @@ function PerformHammeringTask()
     end
     
     -- Start hammering animation and progressbar
-    lib.progressBar({
-        duration = 10000,
-        label = 'Hammering...',
-        useWhileDead = false,
-        canCancel = true,
-        disable = {
-            car = true,
-            move = true
-        },
-        anim = {
-            dict = 'amb@world_human_hammering@male@base',
-            clip = 'base'
-        },
-        prop = {
+    if hasOxLib and lib and libInitialized then
+        SafelyUseOxLib('progressBar', {
+            duration = 10000,
+            label = 'Hammering...',
+            useWhileDead = false,
+            canCancel = true,
+            disable = {
+                car = true,
+                move = true
+            },
+            anim = {
+                dict = 'amb@world_human_hammering@male@base',
+                clip = 'base'
+            },
+            prop = {
+                model = 'prop_tool_hammer',
+                bone = 28422,
+                pos = vec3(0.0, 0.0, 0.0),
+                rot = vec3(0.0, 0.0, 0.0)
+            }
+        })
+    else
+        -- Fallback to QBCore progress bar
+        QBCore.Functions.Progressbar("hammering", 'Hammering...', 10000, false, true, {
+            disableMovement = true,
+            disableCarMovement = true,
+            disableMouse = false,
+            disableCombat = true,
+        }, {
+            animDict = 'amb@world_human_hammering@male@base',
+            anim = 'base',
+            flags = 49,
+        }, {
             model = 'prop_tool_hammer',
-            bone = 28422,
-            pos = vec3(0.0, 0.0, 0.0),
-            rot = vec3(0.0, 0.0, 0.0)
-        }
-    })
+            bone = 28422
+        }, {}, function() -- Done
+            -- Completed
+        end, function() -- Cancel
+            ClearPedTasks(PlayerPedId())
+        end)
+    end
     
     -- Play hammer sound
     PlaySoundFrontend(-1, "Drill_Pin_Break", "DLC_HEIST_FLEECA_SOUNDSET", 1)
@@ -489,26 +529,47 @@ function PerformDrillingTask()
     end
     
     -- Start drilling animation and progressbar
-    lib.progressBar({
-        duration = 8000,
-        label = 'Drilling...',
-        useWhileDead = false,
-        canCancel = true,
-        disable = {
-            car = true,
-            move = true
-        },
-        anim = {
-            dict = 'anim@heists@fleeca_bank@drilling',
-            clip = 'drill_straight_idle'
-        },
-        prop = {
+    if hasOxLib and lib and libInitialized then
+        SafelyUseOxLib('progressBar', {
+            duration = 8000,
+            label = 'Drilling...',
+            useWhileDead = false,
+            canCancel = true,
+            disable = {
+                car = true,
+                move = true
+            },
+            anim = {
+                dict = 'anim@heists@fleeca_bank@drilling',
+                clip = 'drill_straight_idle'
+            },
+            prop = {
+                model = 'prop_tool_drill',
+                bone = 57005,
+                pos = vec3(0.14, 0.0, -0.01),
+                rot = vec3(90.0, -90.0, 180.0)
+            }
+        })
+    else
+        -- Fallback to QBCore progress bar
+        QBCore.Functions.Progressbar("drilling", 'Drilling...', 8000, false, true, {
+            disableMovement = true,
+            disableCarMovement = true,
+            disableMouse = false,
+            disableCombat = true,
+        }, {
+            animDict = 'anim@heists@fleeca_bank@drilling',
+            anim = 'drill_straight_idle',
+            flags = 49,
+        }, {
             model = 'prop_tool_drill',
-            bone = 57005,
-            pos = vec3(0.14, 0.0, -0.01),
-            rot = vec3(90.0, -90.0, 180.0)
-        }
-    })
+            bone = 57005
+        }, {}, function() -- Done
+            -- Completed
+        end, function() -- Cancel
+            ClearPedTasks(PlayerPedId())
+        end)
+    end
     
     -- Play drill sound
     PlaySoundFrontend(-1, "Drill_Pin_Break", "DLC_HEIST_FLEECA_SOUNDSET", 1)
@@ -592,26 +653,47 @@ function PerformWeldingTask()
     end
     
     -- Start welding animation and progressbar
-    lib.progressBar({
-        duration = 12000,
-        label = 'Welding...',
-        useWhileDead = false,
-        canCancel = true,
-        disable = {
-            car = true,
-            move = true
-        },
-        anim = {
-            dict = 'amb@world_human_welding@male@base',
-            clip = 'base'
-        },
-        prop = {
+    if hasOxLib and lib and libInitialized then
+        SafelyUseOxLib('progressBar', {
+            duration = 12000,
+            label = 'Welding...',
+            useWhileDead = false,
+            canCancel = true,
+            disable = {
+                car = true,
+                move = true
+            },
+            anim = {
+                dict = 'amb@world_human_welding@male@base',
+                clip = 'base'
+            },
+            prop = {
+                model = 'prop_weld_torch',
+                bone = 28422,
+                pos = vec3(0.0, 0.0, 0.0),
+                rot = vec3(0.0, 0.0, 0.0)
+            }
+        })
+    else
+        -- Fallback to QBCore progress bar
+        QBCore.Functions.Progressbar("welding", 'Welding...', 12000, false, true, {
+            disableMovement = true,
+            disableCarMovement = true,
+            disableMouse = false,
+            disableCombat = true,
+        }, {
+            animDict = 'amb@world_human_welding@male@base',
+            anim = 'base',
+            flags = 49,
+        }, {
             model = 'prop_weld_torch',
-            bone = 28422,
-            pos = vec3(0.0, 0.0, 0.0),
-            rot = vec3(0.0, 0.0, 0.0)
-        }
-    })
+            bone = 28422
+        }, {}, function() -- Done
+            -- Completed
+        end, function() -- Cancel
+            ClearPedTasks(PlayerPedId())
+        end)
+    end
     
     -- Add particle effects for welding
     local playerPed = PlayerPedId()

@@ -23,11 +23,13 @@ local jobStatus = {
     }
 }
 
--- Check if ox_lib is available
+-- Declare local variables for ox_lib support
 local hasOxLib = false
-local lib = nil
 local libInitialized = false
+-- Use direct reference to the global lib
+local lib = nil
 
+-- Check if ox_lib is available
 Citizen.CreateThread(function()
     -- Wait a moment to ensure other resources are loaded
     Citizen.Wait(1000)
@@ -35,40 +37,40 @@ Citizen.CreateThread(function()
     -- Check if ox_lib is started
     if GetResourceState('ox_lib') == 'started' then
         hasOxLib = true
-        lib = exports['ox_lib']
         
-        -- Make sure the lib export is fully initialized
-        local maxAttempts = 10
-        local attempts = 0
-        
-        while attempts < maxAttempts do
-            attempts = attempts + 1
+        -- Use proper FiveM exports syntax - this assigns directly to global lib
+        if not lib then
+            -- Try both methods of getting the export
+            lib = exports['ox_lib']
             
-            -- Check if we can access functions in the export
-            if lib and type(lib) == 'table' and CheckLibFunctions() then
-                print('ox_lib fully initialized in UI module after', attempts, 'attempts')
-                libInitialized = true
-                break
+            -- Also check if it's been set globally
+            if not lib and _G.lib then
+                lib = _G.lib
             end
             
-            print('Waiting for ox_lib to fully initialize in UI module... attempt', attempts)
-            Citizen.Wait(500)
-        end
-        
-        if not libInitialized then
-            print('WARNING: ox_lib did not fully initialize in UI module after', maxAttempts, 'attempts')
-            if lib then
-                print('Available functions:')
-                for k, v in pairs(lib) do
-                    print('  -', k, type(v))
-                end
+            -- Check if lib is fully initialized
+            if lib and type(lib.registerContext) == 'function' then
+                print('ox_lib fully initialized in UI module')
+                libInitialized = true
+            else
+                print('WARNING: ox_lib export obtained but registerContext not available')
             end
         end
     end
     
     print('ox_lib detection status in UI module:')
     print('  - Resource detected:', hasOxLib)
-    print('  - Fully initialized:', libInitialized)
+    print('  - Lib export obtained:', lib ~= nil)
+    print('  - Functions available:', libInitialized)
+    
+    -- Run a test if lib is available
+    if hasOxLib and lib and libInitialized then
+        -- Schedule a delayed test to ensure everything is loaded
+        Citizen.SetTimeout(2000, function()
+            local testResult = TestOxLibMenu()
+            print('ox_lib menu test result:', testResult)
+        end)
+    end
 end)
 
 local debugMode = false -- Set to true for debugging
@@ -136,86 +138,123 @@ function ShowUIMenu(id, title, options, parent, footerInfo)
 end
 
 -- Function to safely use ox_lib
-function SafelyUseOxLib(action, ...)
+function SafelyUseOxLib(action, param)
+    if not action then
+        print('ERROR: No action provided to SafelyUseOxLib')
+        return nil
+    end
+    
+    -- Ensure param is a table if required
+    if action == 'registerContext' then
+        if not param then
+            print('ERROR: registerContext requires a parameter table')
+            return nil
+        elseif type(param) ~= 'table' then
+            print('ERROR: registerContext parameter must be a table, got', type(param))
+            return nil
+        elseif type(param.options) ~= 'table' then
+            print('ERROR: registerContext options must be a table, got', type(param.options))
+            return nil
+        elseif #param.options == 0 then
+            print('WARNING: registerContext called with empty options array')
+            -- Don't return nil here, allow empty menus
+        end
+        
+        -- Ensure options are properly formatted for ox_lib
+        for i, option in ipairs(param.options) do
+            -- Always ensure these fields exist
+            option.title = option.title or 'Option ' .. i
+            option.description = option.description or ''
+            
+            -- If onSelect is a function, wrap it properly for ox_lib
+            if type(option.onSelect) == 'function' then
+                local originalOnSelect = option.onSelect
+                option.onSelect = function(args)
+                    -- Execute the original function
+                    originalOnSelect()
+                end
+            end
+        end
+    end
+    
     if hasOxLib and lib and libInitialized then
-        if action == 'hideContext' then
-            if type(lib.hideContext) ~= "function" then
-                print('ox_lib.hideContext is not a function, type:', type(lib.hideContext))
-                return nil
+        if action == 'hideContext' and type(lib.hideContext) == "function" then
+            return lib.hideContext()
+        elseif action == 'registerContext' and type(lib.registerContext) == "function" then
+            -- Dump the full context for debugging
+            print('REGISTERING CONTEXT:')
+            for k, v in pairs(param) do
+                if k ~= 'options' then
+                    print(k, '=', v)
+                else
+                    print('options = [' .. #v .. ' items]')
+                    -- Print first few options
+                    for i = 1, math.min(3, #v) do
+                        print('  Option ' .. i .. ':', v[i].title)
+                    end
+                end
             end
-            return lib.hideContext(...)
-        elseif action == 'registerContext' then
-            if type(lib.registerContext) ~= "function" then
-                print('ox_lib.registerContext is not a function, type:', type(lib.registerContext))
-                return nil
+            
+            -- Try to register context
+            local success, result = pcall(function()
+                return lib.registerContext(param)
+            end)
+            
+            if not success then
+                print('ERROR in registerContext:', result)
+                return false
             end
-            return lib.registerContext(...)
-        elseif action == 'showContext' then
-            if type(lib.showContext) ~= "function" then
-                print('ox_lib.showContext is not a function, type:', type(lib.showContext))
-                return nil
+            
+            return result
+        elseif action == 'showContext' and type(lib.showContext) == "function" then
+            print('SHOWING CONTEXT:', param)
+            
+            -- Try to show context
+            local success, result = pcall(function()
+                return lib.showContext(param)
+            end)
+            
+            if not success then
+                print('ERROR in showContext:', result)
+                return false
             end
-            return lib.showContext(...)
-        elseif action == 'alertDialog' then
-            if type(lib.alertDialog) ~= "function" then
-                print('ox_lib.alertDialog is not a function, type:', type(lib.alertDialog))
-                return nil
-            end
-            return lib.alertDialog(...)
-        elseif action == 'progressBar' then
-            if type(lib.progressBar) ~= "function" then
-                print('ox_lib.progressBar is not a function, type:', type(lib.progressBar))
-                return nil
-            end
-            return lib.progressBar(...)
-        elseif action == 'notify' then
-            if type(lib.notify) ~= "function" then
-                print('ox_lib.notify is not a function, type:', type(lib.notify))
-                return nil
-            end
-            return lib.notify(...)
-        elseif action == 'showTextUI' then
-            if type(lib.showTextUI) ~= "function" then
-                print('ox_lib.showTextUI is not a function, type:', type(lib.showTextUI))
-                return nil
-            end
-            return lib.showTextUI(...)
-        elseif action == 'hideTextUI' then
-            if type(lib.hideTextUI) ~= "function" then
-                print('ox_lib.hideTextUI is not a function, type:', type(lib.hideTextUI))
-                return nil
-            end
-            return lib.hideTextUI(...)
+            
+            return result
+        elseif action == 'alertDialog' and type(lib.alertDialog) == "function" then
+            return lib.alertDialog(param)
+        elseif action == 'progressBar' and type(lib.progressBar) == "function" then
+            return lib.progressBar(param)
+        elseif action == 'notify' and type(lib.notify) == "function" then
+            return lib.notify(param)
+        elseif action == 'showTextUI' and type(lib.showTextUI) == "function" then
+            return lib.showTextUI(param)
+        elseif action == 'hideTextUI' and type(lib.hideTextUI) == "function" then
+            return lib.hideTextUI()
         else
-            print('Unknown action:', action)
+            print('Unknown action or method not available:', action)
             return nil
         end
     else
-        -- Debug what's missing
         print('ox_lib not available for action:', action)
         print('hasOxLib:', hasOxLib)
         print('lib exists:', lib ~= nil)
         print('libInitialized:', libInitialized)
-        if lib then
-            print('lib type:', type(lib))
-            print('Available functions:')
-            for k, v in pairs(lib) do
-                print('  -', k, type(v))
-            end
-        end
         return nil
     end
 end
 
 -- Function to close any open menus
 function CloseMenu()
+    menuOpen = false
+    SetNuiFocus(false, false)
+    
     debugLog('CloseMenu called')
-    if hasOxLib and lib then
+    
+    if hasOxLib and lib and libInitialized then
         SafelyUseOxLib('hideContext')
     else
         TriggerEvent('qb-menu:client:closeMenu')
     end
-    SetNuiFocus(false, false)
 end
 
 -- Function to show a notification
@@ -372,37 +411,172 @@ RegisterNetEvent('vein-construction:client:reopenMenu', function(menuId)
     end
 end)
 
+-- Function to validate and normalize a menu option structure
+function ValidateMenuOption(option)
+    if type(option) ~= 'table' then
+        print('WARNING: Invalid menu option (not a table):', type(option))
+        return {
+            title = 'Invalid Option',
+            description = 'Option format error'
+        }
+    end
+    
+    -- Create a normalized option
+    local validOption = {
+        title = option.title or 'No Title',
+    }
+    
+    -- Optional fields
+    if option.description then validOption.description = option.description end
+    if option.icon then validOption.icon = option.icon end
+    
+    -- Only add onSelect if it's a function
+    if type(option.onSelect) == 'function' then
+        validOption.onSelect = option.onSelect
+    end
+    
+    return validOption
+end
+
+-- Safely register a context menu with better error handling
+function SafeRegisterContext(menuData)
+    if not hasOxLib or not lib or not libInitialized then
+        print('ERROR: Cannot register context - ox_lib not available')
+        return false
+    end
+    
+    if type(menuData) ~= 'table' then
+        print('ERROR: menuData must be a table, got', type(menuData))
+        return false
+    end
+    
+    if not menuData.id then
+        print('ERROR: menuData.id is required')
+        return false
+    end
+    
+    if not menuData.title then
+        print('ERROR: menuData.title is required')
+        return false
+    end
+    
+    if type(menuData.options) ~= 'table' then
+        print('ERROR: menuData.options must be a table')
+        menuData.options = {}
+    end
+    
+    -- Print menu data for debugging
+    print('Registering menu:', menuData.id)
+    print('Title:', menuData.title)
+    print('Options count:', #menuData.options)
+    if menuData.menu then
+        print('Parent menu:', menuData.menu)
+    end
+    
+    -- Try to register the context
+    local success, result = pcall(function()
+        return lib.registerContext(menuData)
+    end)
+    
+    if not success then
+        print('ERROR: Failed to register context menu:', result)
+        return false
+    end
+    
+    if result == false then
+        print('WARNING: lib.registerContext returned false')
+        return false
+    end
+    
+    return true
+end
+
+-- Safely show a context menu with better error handling
+function SafeShowContext(id)
+    if not hasOxLib or not lib or not libInitialized then
+        print('ERROR: Cannot show context - ox_lib not available')
+        return false
+    end
+    
+    if not id then
+        print('ERROR: Menu ID is required')
+        return false
+    end
+    
+    print('Showing menu:', id)
+    
+    -- Try to show the context
+    local success, result = pcall(function()
+        return lib.showContext(id)
+    end)
+    
+    if not success then
+        print('ERROR: Failed to show context menu:', result)
+        return false
+    end
+    
+    if result == false then
+        print('WARNING: lib.showContext returned false')
+        return false
+    end
+    
+    return true
+end
+
 -- Function to show a menu with options
 function ShowMenu(id, title, options, parent)
     -- Initialize options as empty table if nil
     options = options or {}
     
-    debugLog('ShowMenu called:', id, title, #options, parent)
+    print('ShowMenu called:', id, title, 'options count:', #options)
     
     -- Make sure we release any existing UI control first
     SetNuiFocus(false, false)
     
     -- If ox_lib is available, use it
     if hasOxLib and lib and libInitialized then
-        debugLog('Using ox_lib for menu')
-        -- Create menu context
-        local contextOptions = {
+        print('Using ox_lib for menu')
+        
+        -- Create a simplified menu structure compatible with ox_lib
+        local menuData = {
             id = id,
             title = title,
-            options = options
+            options = {},
         }
         
         -- Add parent menu if provided
         if parent then
-            contextOptions.menu = parent
+            menuData.menu = parent
         end
         
-        -- Register and show context menu
-        SafelyUseOxLib('registerContext', contextOptions)
-        SafelyUseOxLib('showContext', id)
+        -- Process options to ensure format compatibility
+        if type(options) == 'table' then
+            for i, option in ipairs(options) do
+                -- Validate and normalize the option
+                local cleanOption = ValidateMenuOption(option)
+                table.insert(menuData.options, cleanOption)
+            end
+        end
+        
+        print('Menu data prepared with ' .. #menuData.options .. ' options')
+        
+        -- Use our safer registration and display functions
+        if SafeRegisterContext(menuData) then
+            if SafeShowContext(id) then
+                return true
+            else
+                SetNuiFocus(false, false)
+                QBCore.Functions.Notify('Failed to show menu', 'error')
+                return false
+            end
+        else
+            SetNuiFocus(false, false)
+            QBCore.Functions.Notify('Failed to register menu', 'error')
+            return false
+        end
     else
-        debugLog('Using QBCore menu')
-        -- Fallback to QBCore menu if ox_lib is not available
+        print('Using QBCore menu')
+        -- QBCore menu code remains unchanged
         local qbMenu = {}
         
         -- Add header
@@ -510,9 +684,10 @@ function ShowAlert(message, type, icon)
     debugLog('ShowAlert:', message, type)
     
     if hasOxLib and lib and libInitialized then
-        SafelyUseOxLib('showTextUI', message, {
+        SafelyUseOxLib('showTextUI', {
             position = "right-center",
             icon = icon,
+            text = message,
             style = {
                 borderRadius = 0,
                 backgroundColor = type == 'error' and '#AA0000' or '#2D3A4A',
@@ -1036,4 +1211,64 @@ function CheckLibFunctions()
     
     print('All required ox_lib UI functions are available')
     return true
-end 
+end
+
+-- Test function to check if ox_lib is working properly
+function TestOxLibMenu()
+    print('=== TESTING OX_LIB MENU FUNCTIONALITY ===')
+    
+    -- Check if library is available
+    if not hasOxLib then
+        print('ox_lib not detected')
+        return false
+    end
+    
+    if not lib then
+        print('lib export is nil')
+        return false
+    end
+    
+    if not libInitialized then
+        print('lib not fully initialized')
+        return false
+    end
+    
+    -- Try to create a simple test menu
+    local testMenu = {
+        id = 'test_menu',
+        title = 'Test Menu',
+        options = {
+            {
+                title = 'Test Option',
+                description = 'This is a test'
+            }
+        }
+    }
+    
+    print('Attempting to register test menu...')
+    local success = lib.registerContext(testMenu)
+    
+    if success == false then
+        print('Failed to register test menu')
+        return false
+    end
+    
+    print('Test menu registered successfully')
+    print('Attempting to show test menu...')
+    
+    local showSuccess = lib.showContext('test_menu')
+    
+    if showSuccess == false then
+        print('Failed to show test menu')
+        return false
+    end
+    
+    print('Test menu shown successfully')
+    print('ox_lib context menus are working properly')
+    return true
+end
+
+-- Add a debug command to test the ox_lib menu
+RegisterCommand('testmenu', function()
+    TestOxLibMenu()
+end, false) 

@@ -13,55 +13,68 @@ Citizen.CreateThread(function()
     -- Check if ox_lib is started
     if GetResourceState('ox_lib') == 'started' then
         hasOxLib = true
+        
+        -- Try to get the export
         lib = exports['ox_lib']
         
-        -- Make sure the lib export is fully initialized
-        local maxAttempts = 10
-        local attempts = 0
-        
-        while attempts < maxAttempts do
-            attempts = attempts + 1
-            
-            -- Check if we can access functions in the export
-            if lib and type(lib) == 'table' and type(lib.registerContext) == 'function' then
-                print('ox_lib fully initialized in Events module after', attempts, 'attempts')
-                libInitialized = true
-                break
-            end
-            
-            print('Waiting for ox_lib to fully initialize in Events module... attempt', attempts)
-            Citizen.Wait(500)
+        -- Also check if it's been set globally
+        if not lib and _G.lib then
+            lib = _G.lib
         end
         
-        if not libInitialized then
-            print('WARNING: ox_lib did not fully initialize in Events module after', maxAttempts, 'attempts')
+        -- Check if lib is fully initialized
+        if lib and type(lib.registerContext) == 'function' then
+            print('ox_lib fully initialized in Events module')
+            libInitialized = true
+        else
+            print('WARNING: ox_lib export obtained but registerContext not available')
         end
     end
     
     print('ox_lib detection status in Events module:')
     print('  - Resource detected:', hasOxLib)
-    print('  - Fully initialized:', libInitialized)
+    print('  - Lib export obtained:', lib ~= nil)
+    print('  - Functions available:', libInitialized)
 end)
 
 -- Function to safely use ox_lib
-function SafelyUseOxLib(action, ...)
+function SafelyUseOxLib(action, param)
+    if not action then
+        print('ERROR: No action provided to SafelyUseOxLib')
+        return nil
+    end
+    
+    -- Ensure param is a table if required for certain actions
+    if action == 'registerContext' and not param then
+        print('ERROR: registerContext requires a parameter table')
+        return nil
+    elseif action == 'registerContext' and type(param) ~= 'table' then
+        print('ERROR: registerContext parameter must be a table, got', type(param))
+        return nil
+    elseif action == 'registerContext' and type(param.options) ~= 'table' then
+        print('ERROR: registerContext options must be a table, got', type(param.options))
+        return nil
+    end
+    
     if hasOxLib and lib and libInitialized then
         if action == 'hideContext' and type(lib.hideContext) == "function" then
-            return lib.hideContext(...)
+            return lib.hideContext()
         elseif action == 'registerContext' and type(lib.registerContext) == "function" then
-            return lib.registerContext(...)
+            -- Final safety check for options table
+            if not param.options then param.options = {} end
+            return lib.registerContext(param)
         elseif action == 'showContext' and type(lib.showContext) == "function" then
-            return lib.showContext(...)
+            return lib.showContext(param)
         elseif action == 'alertDialog' and type(lib.alertDialog) == "function" then
-            return lib.alertDialog(...)
+            return lib.alertDialog(param)
         elseif action == 'progressBar' and type(lib.progressBar) == "function" then
-            return lib.progressBar(...)
+            return lib.progressBar(param)
         elseif action == 'notify' and type(lib.notify) == "function" then
-            return lib.notify(...)
+            return lib.notify(param)
         elseif action == 'showTextUI' and type(lib.showTextUI) == "function" then
-            return lib.showTextUI(...)
+            return lib.showTextUI(param)
         elseif action == 'hideTextUI' and type(lib.hideTextUI) == "function" then
-            return lib.hideTextUI(...)
+            return lib.hideTextUI()
         else
             print('Unknown action:', action)
             return nil
@@ -349,7 +362,7 @@ RegisterNetEvent('vein-construction:client:displayActiveProjects', function(proj
     end
     
     ShowMenu('active_projects', 'Active Projects', options, 'project_menu')
-end)
+end
 
 -- View details of a specific project
 function ViewProjectDetails(project)
@@ -455,4 +468,4 @@ AddEventHandler('vein-construction:client:viewActiveProjects', function(projects
     })
     
     ShowMenu('active_projects', 'Active Projects', options, 'project_menu')
-end)
+end

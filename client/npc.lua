@@ -14,24 +14,43 @@ RegisterNetEvent('QBCore:Client:OnPlayerLoaded', function()
 end)
 
 -- Function to safely use ox_lib
-function SafelyUseOxLib(action, ...)
+function SafelyUseOxLib(action, param)
+    if not action then
+        print('ERROR: No action provided to SafelyUseOxLib')
+        return nil
+    end
+    
+    -- Ensure param is a table if required for certain actions
+    if action == 'registerContext' and not param then
+        print('ERROR: registerContext requires a parameter table')
+        return nil
+    elseif action == 'registerContext' and type(param) ~= 'table' then
+        print('ERROR: registerContext parameter must be a table, got', type(param))
+        return nil
+    elseif action == 'registerContext' and type(param.options) ~= 'table' then
+        print('ERROR: registerContext options must be a table, got', type(param.options))
+        return nil
+    end
+    
     if hasOxLib and lib and libInitialized then
         if action == 'hideContext' and type(lib.hideContext) == "function" then
-            return lib.hideContext(...)
+            return lib.hideContext()
         elseif action == 'registerContext' and type(lib.registerContext) == "function" then
-            return lib.registerContext(...)
+            -- Final safety check for options table
+            if not param.options then param.options = {} end
+            return lib.registerContext(param)
         elseif action == 'showContext' and type(lib.showContext) == "function" then
-            return lib.showContext(...)
+            return lib.showContext(param)
         elseif action == 'alertDialog' and type(lib.alertDialog) == "function" then
-            return lib.alertDialog(...)
+            return lib.alertDialog(param)
         elseif action == 'progressBar' and type(lib.progressBar) == "function" then
-            return lib.progressBar(...)
+            return lib.progressBar(param)
         elseif action == 'notify' and type(lib.notify) == "function" then
-            return lib.notify(...)
+            return lib.notify(param)
         elseif action == 'showTextUI' and type(lib.showTextUI) == "function" then
-            return lib.showTextUI(...)
+            return lib.showTextUI(param)
         elseif action == 'hideTextUI' and type(lib.hideTextUI) == "function" then
-            return lib.hideTextUI(...)
+            return lib.hideTextUI()
         else
             print('Unknown action or method not available:', action)
             return nil
@@ -61,34 +80,28 @@ Citizen.CreateThread(function()
     -- Check if ox_lib is started
     if GetResourceState('ox_lib') == 'started' then
         hasOxLib = true
+        
+        -- Try to get the export
         lib = exports['ox_lib']
         
-        -- Make sure the lib export is fully initialized
-        local maxAttempts = 10
-        local attempts = 0
-        
-        while attempts < maxAttempts do
-            attempts = attempts + 1
-            
-            -- Check if we can access functions in the export
-            if lib and type(lib) == 'table' and type(lib.registerContext) == 'function' then
-                print('ox_lib fully initialized in NPC module after', attempts, 'attempts')
-                libInitialized = true
-                break
-            end
-            
-            print('Waiting for ox_lib to fully initialize in NPC module... attempt', attempts)
-            Citizen.Wait(500)
+        -- Also check if it's been set globally
+        if not lib and _G.lib then
+            lib = _G.lib
         end
         
-        if not libInitialized then
-            print('WARNING: ox_lib did not fully initialize in NPC module after', maxAttempts, 'attempts')
+        -- Check if lib is fully initialized
+        if lib and type(lib.registerContext) == 'function' then
+            print('ox_lib fully initialized in NPC module')
+            libInitialized = true
+        else
+            print('WARNING: ox_lib export obtained but registerContext not available')
         end
     end
     
     print('ox_lib detection status in NPC module:')
     print('  - Resource detected:', hasOxLib)
-    print('  - Fully initialized:', libInitialized)
+    print('  - Lib export obtained:', lib ~= nil)
+    print('  - Functions available:', libInitialized)
 end)
 
 -- Create job NPC and add target interactions
@@ -314,6 +327,8 @@ end
 
 -- Function to open the construction shop
 function OpenConstructionShop()
+    print('OpenConstructionShop called')
+    
     -- Create menu options
     local options = {
         {
@@ -342,20 +357,14 @@ function OpenConstructionShop()
         }
     }
     
-    -- Try to show the menu with error handling
-    local success = pcall(function()
-        ShowMenu('construction_shop', 'Construction Shop', options)
-    end)
-    
-    -- If ShowMenu fails, release control
-    if not success then
-        ReleaseUIControl()
-        QBCore.Functions.Notify('There was an error opening the menu. Please try again.', 'error')
-    end
+    -- Show menu directly without pcall
+    ShowMenu('construction_shop', 'Construction Shop', options)
 end
 
 -- Safety Equipment Menu
 function OpenSafetyEquipmentMenu()
+    print('OpenSafetyEquipmentMenu called')
+    
     local options = {
         {
             title = "Construction Helmet",
@@ -399,18 +408,14 @@ function OpenSafetyEquipmentMenu()
         }
     }
     
-    local success = pcall(function()
-        ShowMenu('safety_menu', 'Safety Equipment', options, 'construction_shop')
-    end)
-    
-    if not success then
-        ReleaseUIControl()
-        QBCore.Functions.Notify('There was an error opening the menu. Please try again.', 'error')
-    end
+    -- Show menu directly without pcall
+    ShowMenu('safety_menu', 'Safety Equipment', options, 'construction_shop')
 end
 
 -- Tools Menu
 function OpenToolsMenu()
+    print('OpenToolsMenu called')
+    
     local options = {
         {
             title = "Hammer",
@@ -462,18 +467,14 @@ function OpenToolsMenu()
         }
     }
     
-    local success = pcall(function()
-        ShowMenu('tools_menu', 'Tools', options, 'construction_shop')
-    end)
-    
-    if not success then
-        ReleaseUIControl()
-        QBCore.Functions.Notify('There was an error opening the menu. Please try again.', 'error')
-    end
+    -- Show menu directly without pcall
+    ShowMenu('tools_menu', 'Tools', options, 'construction_shop')
 end
 
 -- Materials Menu
 function OpenMaterialsMenu()
+    print('OpenMaterialsMenu called')
+    
     local options = {
         {
             title = "Cement Bag",
@@ -525,14 +526,8 @@ function OpenMaterialsMenu()
         }
     }
     
-    local success = pcall(function()
-        ShowMenu('materials_menu', 'Materials', options, 'construction_shop')
-    end)
-    
-    if not success then
-        ReleaseUIControl()
-        QBCore.Functions.Notify('There was an error opening the menu. Please try again.', 'error')
-    end
+    -- Show menu directly without pcall
+    ShowMenu('materials_menu', 'Materials', options, 'construction_shop')
 end
 
 -- Register server callback for buying items
