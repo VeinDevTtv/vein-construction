@@ -3,6 +3,9 @@ local QBCore = exports['qb-core']:GetCoreObject()
 local PlayerData = {}
 local isOnDuty = false
 
+-- Check if ox_lib is available
+local hasOxLib = GetResourceState('ox_lib') == 'started'
+
 -- Initialize player data
 RegisterNetEvent('QBCore:Client:OnPlayerLoaded', function()
     PlayerData = QBCore.Functions.GetPlayerData()
@@ -225,244 +228,236 @@ function AddQBInteractions()
     })
 end
 
+-- Function to release control back to the player if UI fails to appear
+function ReleaseUIControl()
+    SetNuiFocus(false, false)
+    TriggerEvent('qb-menu:client:closeMenu')
+    if hasOxLib then
+        lib.hideContext()
+    end
+end
+
 -- Function to open the construction shop
 function OpenConstructionShop()
-    local sections = {
+    -- Create menu options
+    local options = {
         {
-            title = "Shop Categories",
-            items = {
-                {
-                    title = "Safety Equipment",
-                    description = "Required safety gear for construction work",
-                    icon = "fas fa-hard-hat",
-                    onSelect = function()
-                        OpenSafetyEquipmentMenu()
-                    end
-                },
-                {
-                    title = "Tools",
-                    description = "Construction tools and equipment",
-                    icon = "fas fa-tools",
-                    onSelect = function()
-                        OpenToolsMenu()
-                    end
-                },
-                {
-                    title = "Materials",
-                    description = "Construction materials",
-                    icon = "fas fa-cubes",
-                    onSelect = function()
-                        OpenMaterialsMenu()
-                    end
-                }
-            }
+            title = "Safety Equipment",
+            description = "Required gear for construction work",
+            icon = "fas fa-hard-hat",
+            onSelect = function()
+                OpenSafetyEquipmentMenu()
+            end
+        },
+        {
+            title = "Tools",
+            description = "Equipment for construction tasks",
+            icon = "fas fa-tools",
+            onSelect = function()
+                OpenToolsMenu()
+            end
+        },
+        {
+            title = "Materials",
+            description = "Building materials",
+            icon = "fas fa-boxes",
+            onSelect = function()
+                OpenMaterialsMenu()
+            end
         }
     }
     
-    CreateSectionedMenu('construction_shop', 'Construction Shop', sections)
+    -- Try to show the menu with error handling
+    local success = pcall(function()
+        ShowMenu('construction_shop', 'Construction Shop', options)
+    end)
+    
+    -- If ShowMenu fails, release control
+    if not success then
+        ReleaseUIControl()
+        QBCore.Functions.Notify('There was an error opening the menu. Please try again.', 'error')
+    end
 end
 
--- Function to open the safety equipment menu
+-- Safety Equipment Menu
 function OpenSafetyEquipmentMenu()
-    local safetyItems = {
+    local options = {
         {
             title = "Construction Helmet",
-            description = "Protects your head from falling objects",
+            description = "$150 - Standard safety helmet for construction work",
             icon = "fas fa-hard-hat",
-            price = 75,
-            id = "construction_helmet",
             onSelect = function()
-                TriggerServerEvent('vein-construction:server:buyItem', "construction_helmet", "safety")
+                TriggerServerEvent('vein-construction:server:buyItem', 'construction_helmet', 150)
             end
         },
         {
             title = "Safety Vest",
-            description = "High visibility vest for safety on site",
-            icon = "fas fa-vest",
-            price = 50,
-            id = "safety_vest",
+            description = "$100 - High-visibility safety vest",
+            icon = "fas fa-tshirt",
             onSelect = function()
-                TriggerServerEvent('vein-construction:server:buyItem', "safety_vest", "safety")
+                TriggerServerEvent('vein-construction:server:buyItem', 'safety_vest', 100)
             end
         },
         {
             title = "Work Gloves",
-            description = "Protects hands from injuries",
+            description = "$75 - Protective gloves for construction work",
             icon = "fas fa-mitten",
-            price = 35,
-            id = "work_gloves",
             onSelect = function()
-                TriggerServerEvent('vein-construction:server:buyItem', "work_gloves", "safety")
+                TriggerServerEvent('vein-construction:server:buyItem', 'work_gloves', 75)
             end
         },
         {
-            title = "Full Safety Kit",
-            description = "All required safety equipment (helmet, vest, gloves)",
-            icon = "fas fa-shield-alt",
-            price = 150,
-            id = "safety_kit",
+            title = "Safety Boots",
+            description = "$200 - Steel-toed boots for construction work",
+            icon = "fas fa-boot",
             onSelect = function()
-                TriggerServerEvent('vein-construction:server:buyItem', "safety_kit", "safety")
+                TriggerServerEvent('vein-construction:server:buyItem', 'safety_boots', 200)
+            end
+        },
+        {
+            title = "Back",
+            description = "Return to main menu",
+            icon = "fas fa-arrow-left",
+            onSelect = function()
+                OpenConstructionShop()
             end
         }
     }
     
-    -- Format options with prices in description
-    local options = {}
-    for _, item in ipairs(safetyItems) do
-        table.insert(options, {
-            title = item.title,
-            description = item.description .. " - $" .. item.price,
-            icon = item.icon,
-            price = item.price,
-            id = item.id,
-            onSelect = item.onSelect
-        })
-    end
+    local success = pcall(function()
+        ShowMenu('safety_menu', 'Safety Equipment', options, 'construction_shop')
+    end)
     
-    ShowMenu('safety_equipment', 'Safety Equipment', options, 'construction_shop')
+    if not success then
+        ReleaseUIControl()
+        QBCore.Functions.Notify('There was an error opening the menu. Please try again.', 'error')
+    end
 end
 
--- Function to open the tools menu
+-- Tools Menu
 function OpenToolsMenu()
-    local toolItems = {
+    local options = {
         {
             title = "Hammer",
-            description = "Basic construction hammer",
+            description = "$300 - Standard construction hammer",
             icon = "fas fa-hammer",
-            price = 100,
-            id = "hammer",
             onSelect = function()
-                TriggerServerEvent('vein-construction:server:buyItem', "hammer", "tool")
+                TriggerServerEvent('vein-construction:server:buyItem', 'hammer', 300)
+            end
+        },
+        {
+            title = "Screwdriver Set",
+            description = "$250 - Set of various screwdrivers",
+            icon = "fas fa-screwdriver",
+            onSelect = function()
+                TriggerServerEvent('vein-construction:server:buyItem', 'screwdriver_set', 250)
             end
         },
         {
             title = "Power Drill",
-            description = "Electric drill for construction work",
-            icon = "fas fa-screwdriver",
-            price = 250,
-            id = "power_drill",
+            description = "$500 - Electric drill for construction tasks",
+            icon = "fas fa-power-off",
             onSelect = function()
-                TriggerServerEvent('vein-construction:server:buyItem', "power_drill", "tool")
+                TriggerServerEvent('vein-construction:server:buyItem', 'power_drill', 500)
             end
         },
         {
             title = "Measuring Tape",
-            description = "For precise measurements",
+            description = "$100 - For precise measurements",
             icon = "fas fa-ruler",
-            price = 40,
-            id = "measuring_tape",
             onSelect = function()
-                TriggerServerEvent('vein-construction:server:buyItem', "measuring_tape", "tool")
+                TriggerServerEvent('vein-construction:server:buyItem', 'measuring_tape', 100)
             end
         },
         {
-            title = "Shovel",
-            description = "For digging and moving materials",
-            icon = "fas fa-snowplow",
-            price = 120,
-            id = "shovel",
+            title = "Wrench Set",
+            description = "$350 - Set of various sized wrenches",
+            icon = "fas fa-wrench",
             onSelect = function()
-                TriggerServerEvent('vein-construction:server:buyItem', "shovel", "tool")
+                TriggerServerEvent('vein-construction:server:buyItem', 'wrench_set', 350)
             end
         },
         {
-            title = "Welding Torch",
-            description = "For metal construction work",
-            icon = "fas fa-fire",
-            price = 350,
-            id = "welding_torch",
+            title = "Back",
+            description = "Return to main menu",
+            icon = "fas fa-arrow-left",
             onSelect = function()
-                TriggerServerEvent('vein-construction:server:buyItem', "welding_torch", "tool")
+                OpenConstructionShop()
             end
         }
     }
     
-    -- Format options with prices in description
-    local options = {}
-    for _, item in ipairs(toolItems) do
-        table.insert(options, {
-            title = item.title,
-            description = item.description .. " - $" .. item.price,
-            icon = item.icon,
-            price = item.price,
-            id = item.id,
-            onSelect = item.onSelect
-        })
-    end
+    local success = pcall(function()
+        ShowMenu('tools_menu', 'Tools', options, 'construction_shop')
+    end)
     
-    ShowMenu('tools_menu', 'Construction Tools', options, 'construction_shop')
+    if not success then
+        ReleaseUIControl()
+        QBCore.Functions.Notify('There was an error opening the menu. Please try again.', 'error')
+    end
 end
 
--- Function to open the materials menu
+-- Materials Menu
 function OpenMaterialsMenu()
-    local materialItems = {
+    local options = {
         {
-            title = "Concrete Mix",
-            description = "50lb bag of concrete mix",
-            icon = "fas fa-cubes",
-            price = 45,
-            id = "concrete_mix",
+            title = "Cement Bag",
+            description = "$75 - A bag of cement for construction",
+            icon = "fas fa-shopping-bag",
             onSelect = function()
-                TriggerServerEvent('vein-construction:server:buyItem', "concrete_mix", "material")
+                TriggerServerEvent('vein-construction:server:buyItem', 'cement_bag', 75)
             end
         },
         {
             title = "Lumber",
-            description = "Wood for construction",
+            description = "$50 - Wood for construction projects",
+            icon = "fas fa-tree",
+            onSelect = function()
+                TriggerServerEvent('vein-construction:server:buyItem', 'lumber', 50)
+            end
+        },
+        {
+            title = "Steel Beam",
+            description = "$150 - Heavy steel beam for construction",
             icon = "fas fa-grip-lines",
-            price = 60,
-            id = "lumber",
             onSelect = function()
-                TriggerServerEvent('vein-construction:server:buyItem', "lumber", "material")
+                TriggerServerEvent('vein-construction:server:buyItem', 'steel_beam', 150)
             end
         },
         {
-            title = "Steel Beams",
-            description = "Metal structural support",
-            icon = "fas fa-stream",
-            price = 120,
-            id = "steel_beams",
-            onSelect = function()
-                TriggerServerEvent('vein-construction:server:buyItem', "steel_beams", "material")
-            end
-        },
-        {
-            title = "Bricks",
-            description = "Stack of 50 bricks",
+            title = "Brick Pack",
+            description = "$100 - A pack of construction bricks",
             icon = "fas fa-border-all",
-            price = 85,
-            id = "bricks",
             onSelect = function()
-                TriggerServerEvent('vein-construction:server:buyItem', "bricks", "material")
+                TriggerServerEvent('vein-construction:server:buyItem', 'brick_pack', 100)
             end
         },
         {
-            title = "Paint",
-            description = "1 gallon of paint",
-            icon = "fas fa-fill-drip",
-            price = 30,
-            id = "paint",
+            title = "Wire Bundle",
+            description = "$60 - Bundle of electrical wires",
+            icon = "fas fa-plug",
             onSelect = function()
-                TriggerServerEvent('vein-construction:server:buyItem', "paint", "material")
+                TriggerServerEvent('vein-construction:server:buyItem', 'wire_bundle', 60)
+            end
+        },
+        {
+            title = "Back",
+            description = "Return to main menu",
+            icon = "fas fa-arrow-left",
+            onSelect = function()
+                OpenConstructionShop()
             end
         }
     }
     
-    -- Format options with prices in description
-    local options = {}
-    for _, item in ipairs(materialItems) do
-        table.insert(options, {
-            title = item.title,
-            description = item.description .. " - $" .. item.price,
-            icon = item.icon,
-            price = item.price,
-            id = item.id,
-            onSelect = item.onSelect
-        })
-    end
+    local success = pcall(function()
+        ShowMenu('materials_menu', 'Materials', options, 'construction_shop')
+    end)
     
-    ShowMenu('materials_menu', 'Construction Materials', options, 'construction_shop')
+    if not success then
+        ReleaseUIControl()
+        QBCore.Functions.Notify('There was an error opening the menu. Please try again.', 'error')
+    end
 end
 
 -- Register server callback for buying items
@@ -521,4 +516,157 @@ AddEventHandler('onResourceStop', function(resourceName)
     if DoesEntityExist(jobNPC) then
         DeleteEntity(jobNPC)
     end
-end) 
+end)
+
+-- Make sure we add an emergency close menu command
+RegisterCommand('closeconstructionmenu', function()
+    ReleaseUIControl()
+    QBCore.Functions.Notify('Menu closed via command', 'primary')
+end, false)
+
+TriggerEvent('chat:addSuggestion', '/closeconstructionmenu', 'Close the construction menu if you get stuck')
+
+-- Add an event handler for NPC interactions
+RegisterNetEvent('vein-construction:client:interactNPC', function(interactionType)
+    -- Close any existing menus first
+    ReleaseUIControl()
+    
+    Wait(100) -- Short wait to ensure previous menus are closed
+    
+    -- Handle different interaction types
+    if interactionType == 'shop' then
+        OpenConstructionShop()
+    elseif interactionType == 'job' then
+        TriggerEvent('vein-construction:client:openJobMenu')
+    elseif interactionType == 'projects' then
+        TriggerServerEvent('vein-construction:server:getActiveProjects')
+    end
+end)
+
+-- Setup Construction NPCs
+function SetupConstructionNPCs()
+    local jobNPC = Config.JobNPC
+    
+    -- Check if ox_target exists
+    if GetResourceState('ox_target') == 'started' then
+        -- Use ox_target for interactions
+        exports.ox_target:addModel(jobNPC.model, {
+            {
+                name = 'construction_job',
+                icon = 'fas fa-hard-hat',
+                label = 'Talk to Foreman',
+                onSelect = function()
+                    TriggerEvent('vein-construction:client:interactNPC', 'job')
+                end,
+                canInteract = function()
+                    return true
+                end,
+                distance = 2.5
+            }
+        })
+        
+        exports.ox_target:addModel(Config.ShopNPC.model, {
+            {
+                name = 'construction_shop',
+                icon = 'fas fa-store',
+                label = 'Construction Shop',
+                onSelect = function()
+                    TriggerEvent('vein-construction:client:interactNPC', 'shop')
+                end,
+                canInteract = function()
+                    return true
+                end,
+                distance = 2.5
+            }
+        })
+    else
+        -- Fallback to basic interaction via proximity
+        CreateThread(function()
+            local foreman = nil
+            local shopkeeper = nil
+            
+            -- Create the foreman NPC
+            RequestModel(jobNPC.model)
+            while not HasModelLoaded(jobNPC.model) do
+                Wait(10)
+            end
+            
+            foreman = CreatePed(4, jobNPC.model, jobNPC.coords.x, jobNPC.coords.y, jobNPC.coords.z - 1.0, jobNPC.heading, false, true)
+            FreezeEntityPosition(foreman, true)
+            SetEntityInvincible(foreman, true)
+            SetBlockingOfNonTemporaryEvents(foreman, true)
+            TaskStartScenarioInPlace(foreman, "WORLD_HUMAN_CLIPBOARD", 0, true)
+            
+            -- Create the shop NPC
+            RequestModel(Config.ShopNPC.model)
+            while not HasModelLoaded(Config.ShopNPC.model) do
+                Wait(10)
+            end
+            
+            shopkeeper = CreatePed(4, Config.ShopNPC.model, Config.ShopNPC.coords.x, Config.ShopNPC.coords.y, Config.ShopNPC.coords.z - 1.0, Config.ShopNPC.heading, false, true)
+            FreezeEntityPosition(shopkeeper, true)
+            SetEntityInvincible(shopkeeper, true)
+            SetBlockingOfNonTemporaryEvents(shopkeeper, true)
+            TaskStartScenarioInPlace(shopkeeper, "WORLD_HUMAN_STAND_IMPATIENT", 0, true)
+            
+            -- Main loop for proximity check
+            while true do
+                local playerPed = PlayerPedId()
+                local coords = GetEntityCoords(playerPed)
+                local sleep = 1000
+                
+                -- Job NPC interaction
+                local foremanCoords = GetEntityCoords(foreman)
+                local distToForeman = #(coords - foremanCoords)
+                
+                if distToForeman < 5.0 then
+                    sleep = 0
+                    DrawMarker(2, jobNPC.coords.x, jobNPC.coords.y, jobNPC.coords.z + 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.3, 0.3, 0.3, 255, 255, 255, 100, false, true, 2, false, nil, nil, false)
+                    
+                    if distToForeman < 2.0 then
+                        DrawText3D(foremanCoords.x, foremanCoords.y, foremanCoords.z + 1.0, '[E] Talk to Foreman')
+                        
+                        if IsControlJustPressed(0, 38) then -- E key
+                            TriggerEvent('vein-construction:client:interactNPC', 'job')
+                        end
+                    end
+                end
+                
+                -- Shop NPC interaction
+                local shopkeeperCoords = GetEntityCoords(shopkeeper)
+                local distToShopkeeper = #(coords - shopkeeperCoords)
+                
+                if distToShopkeeper < 5.0 then
+                    sleep = 0
+                    DrawMarker(2, Config.ShopNPC.coords.x, Config.ShopNPC.coords.y, Config.ShopNPC.coords.z + 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.3, 0.3, 0.3, 255, 255, 255, 100, false, true, 2, false, nil, nil, false)
+                    
+                    if distToShopkeeper < 2.0 then
+                        DrawText3D(shopkeeperCoords.x, shopkeeperCoords.y, shopkeeperCoords.z + 1.0, '[E] Construction Shop')
+                        
+                        if IsControlJustPressed(0, 38) then -- E key
+                            TriggerEvent('vein-construction:client:interactNPC', 'shop')
+                        end
+                    end
+                end
+                
+                Wait(sleep)
+            end
+        end)
+    end
+end
+
+-- Function to draw 3D text
+function DrawText3D(x, y, z, text)
+    SetTextScale(0.35, 0.35)
+    SetTextFont(4)
+    SetTextProportional(1)
+    SetTextColour(255, 255, 255, 215)
+    SetTextEntry("STRING")
+    SetTextCentre(true)
+    AddTextComponentString(text)
+    SetDrawOrigin(x, y, z, 0)
+    DrawText(0.0, 0.0)
+    local factor = (string.len(text)) / 370
+    DrawRect(0.0, 0.0+0.0125, 0.017+ factor, 0.03, 0, 0, 0, 75)
+    ClearDrawOrigin()
+end 

@@ -1,4 +1,4 @@
--- Initialize QBCore
+-- UI Management for Construction Job
 local QBCore = exports['qb-core']:GetCoreObject()
 
 -- Menu state management
@@ -25,6 +25,14 @@ local jobStatus = {
 
 -- Check if ox_lib is available
 local hasOxLib = GetResourceState('ox_lib') == 'started'
+local debugMode = false -- Set to true for debugging
+
+-- Debug logging function
+local function debugLog(...)
+    if debugMode then
+        print('[vein-construction UI]', ...)
+    end
+end
 
 -- Function to send data to the NUI
 function SendUIMessage(data)
@@ -81,21 +89,14 @@ function ShowUIMenu(id, title, options, parent, footerInfo)
     SetNuiFocus(true, true)
 end
 
--- Function to close the menu
-function CloseUIMenu()
-    if not menuOpen then return end
-    
-    -- Send message to UI
-    SendUIMessage({
-        action = 'closeMenu'
-    })
-
-    -- Reset menu state
-    menuOpen = false
-    menuData = {}
-    menuCallbacks = {}
-    
-    -- Hide cursor
+-- Function to close any open menus
+function CloseMenu()
+    debugLog('CloseMenu called')
+    if hasOxLib then
+        lib.hideContext()
+    else
+        TriggerEvent('qb-menu:client:closeMenu')
+    end
     SetNuiFocus(false, false)
 end
 
@@ -189,7 +190,7 @@ end
 
 -- NUI Callbacks
 RegisterNUICallback('closeMenu', function(data, cb)
-    CloseUIMenu()
+    CloseMenu()
     cb('ok')
 end)
 
@@ -258,7 +259,14 @@ function ShowMenu(id, title, options, parent)
     -- Initialize options as empty table if nil
     options = options or {}
     
+    debugLog('ShowMenu called:', id, title, #options, parent)
+    
+    -- Make sure we release any existing UI control first
+    SetNuiFocus(false, false)
+    
+    -- If ox_lib is available, use it
     if hasOxLib then
+        debugLog('Using ox_lib for menu')
         -- Create menu context
         local contextOptions = {
             id = id,
@@ -275,6 +283,7 @@ function ShowMenu(id, title, options, parent)
         lib.registerContext(contextOptions)
         lib.showContext(id)
     else
+        debugLog('Using QBCore menu')
         -- Fallback to QBCore menu if ox_lib is not available
         local qbMenu = {}
         
@@ -325,34 +334,43 @@ function ShowMenu(id, title, options, parent)
         -- Show QBCore menu
         exports['qb-menu']:openMenu(qbMenu)
     end
+    
+    -- Store active menu options for selection callback
+    RegisterActiveTask(id, options)
+    
+    return true
 end
 
 -- Function to handle menu selection for QBCore fallback
 RegisterNetEvent('vein-construction:client:menuSelect', function(data)
+    debugLog('menuSelect event received', data.id, data.option)
     if not data or not data.id or not data.option then return end
     
     -- Find the selected option in the original menu
     local menuId = data.id
     local optionTitle = data.option
     
-    -- This requires storing menu options somewhere, 
-    -- implementing a simplified version that retrieves by title
     for _, menu in pairs(GetActiveTasks()) do
         if menu.id == menuId then
             for _, option in ipairs(menu.options) do
                 if option.title == optionTitle and option.onSelect then
+                    debugLog('Executing onSelect function for', optionTitle)
                     option.onSelect()
                     return
                 end
             end
         end
     end
+    
+    debugLog('No matching option found for', menuId, optionTitle)
 end)
 
 -- Function to send notification to player
 function SendNotification(message, type, duration)
     type = type or 'primary'
     duration = duration or 5000
+    
+    debugLog('SendNotification:', message, type, duration)
     
     if hasOxLib then
         lib.notify({
@@ -370,6 +388,8 @@ end
 function ShowAlert(message, type, icon)
     type = type or 'info'
     icon = icon or 'fas fa-info-circle'
+    
+    debugLog('ShowAlert:', message, type)
     
     if hasOxLib then
         lib.showTextUI(message, {
@@ -390,6 +410,8 @@ end
 
 -- Function to display progress bar
 function ShowProgressBar(label, duration, canCancel, animation)
+    debugLog('ShowProgressBar:', label, duration)
+    
     if hasOxLib then
         return lib.progressBar({
             duration = duration,
@@ -447,6 +469,7 @@ end
 local activeTasks = {}
 
 function RegisterActiveTask(id, options)
+    debugLog('RegisterActiveTask:', id, #options)
     activeTasks[id] = {
         id = id,
         options = options
@@ -454,6 +477,7 @@ function RegisterActiveTask(id, options)
 end
 
 function RemoveActiveTask(id)
+    debugLog('RemoveActiveTask:', id)
     activeTasks[id] = nil
 end
 
@@ -733,7 +757,7 @@ end
 -- Export the functions
 exports('ShowMenu', ShowMenu)
 exports('SendNotification', SendNotification)
-exports('CloseMenu', CloseUIMenu)
+exports('CloseMenu', CloseMenu)
 exports('ShowProgressBar', ShowProgressBar)
 exports('UpdateProgressBar', UpdateProgressBar)
 exports('HideProgressBar', HideProgressBar)
@@ -859,5 +883,15 @@ RegisterCommand('testconstructionui', function()
         }
     })
 end, false)
+
+-- Emergency command to close menus if stuck
+RegisterCommand('fixmenu', function()
+    debugLog('fixmenu command executed')
+    CloseMenu()
+    SetNuiFocus(false, false)
+    QBCore.Functions.Notify('UI has been reset', 'success')
+end, false)
+
+TriggerEvent('chat:addSuggestion', '/fixmenu', 'Reset the UI if you get stuck in a menu')
 
 print('Vein Construction UI loaded successfully. Use /testconstructionui to test it.') 

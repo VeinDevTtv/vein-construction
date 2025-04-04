@@ -49,6 +49,26 @@ local currentSite = nil
 local activeBlips = {}
 local safetyCheckTimer = nil
 local toolDurabilities = {}
+local hasOxLib = GetResourceState('ox_lib') == 'started'
+
+-- Initialize the script
+Citizen.CreateThread(function()
+    print('Vein Construction: Initializing...')
+    
+    -- Initial player data load
+    PlayerData = QBCore.Functions.GetPlayerData()
+    
+    -- Setup NPCs, blips and map markers
+    SetupJobBlips()
+    SetupConstructionNPCs()
+    
+    -- Duty status check
+    if PlayerData.job and PlayerData.job.name == 'construction' then
+        isOnDuty = PlayerData.job.onduty
+    end
+    
+    print('Vein Construction: Initialized successfully')
+end)
 
 -- Initialize player data and event handlers
 RegisterNetEvent('QBCore:Client:OnPlayerLoaded', function()
@@ -370,106 +390,107 @@ function ApplyForJob()
     end)
 end
 
--- Open job management menu
+-- Function to open the job management menu
 function OpenJobManagementMenu()
-    local playerName = GetPlayerName(PlayerId())
-    local jobTitle = GetJobRankLabel() or 'Construction Worker'
-    local footerInfo = 'Worker: ' .. playerName .. ' | Position: ' .. jobTitle
+    -- Determine player options based on job and duty status
+    local options = {}
     
-    local sections = {
-        {
-            title = "Job Actions",
-            items = {
-                {
-                    title = 'Toggle Duty',
-                    description = isOnDuty and 'Clock out from work' or 'Clock in for work',
-                    icon = isOnDuty and 'fas fa-sign-out-alt' or 'fas fa-sign-in-alt',
-                    onSelect = function()
-                        ToggleDuty()
-                    end
-                }
-            }
-        }
-    }
+    -- Default options available to everyone
+    table.insert(options, {
+        title = isOnDuty and "Clock Out" or "Clock In",
+        description = isOnDuty and "End your shift" or "Start your shift",
+        icon = isOnDuty and "fas fa-clock" or "fas fa-hard-hat",
+        onSelect = function()
+            -- For clocking in, check for safety gear
+            if not isOnDuty then
+                local hasSafetyGear = CheckSafetyGear()
+                if not hasSafetyGear then
+                    SendNotification("You need to wear safety equipment to clock in", "error")
+                    return
+                end
+            end
+            ToggleDuty()
+        end
+    })
     
-    -- Only show task options if on duty
+    -- Options for on-duty workers
     if isOnDuty then
-        table.insert(sections, {
-            title = "Tasks & Management",
-            items = {
-                {
-                    title = 'Select Construction Site',
-                    description = 'Choose a site to work at',
-                    icon = 'fas fa-map-marked-alt',
-                    onSelect = function()
-                        SelectConstructionSite()
-                    end
-                },
-                {
-                    title = 'View Current Rank',
-                    description = 'Check your job rank and XP',
-                    icon = 'fas fa-user-tie',
-                    onSelect = function()
-                        ShowJobLevelInfo()
-                    end
-                },
-                {
-                    title = 'Check Safety Gear',
-                    description = 'Ensure you have all required safety equipment',
-                    icon = 'fas fa-hard-hat',
-                    onSelect = function()
-                        CheckSafetyGear()
-                    end
-                },
-                {
-                    title = 'Check Tool Durability',
-                    description = 'Check the condition of your tools',
-                    icon = 'fas fa-tools',
-                    onSelect = function()
-                        CheckToolDurability()
-                    end
-                }
-            }
+        -- Site selection
+        table.insert(options, {
+            title = "Select Construction Site",
+            description = "Choose a site to work at",
+            icon = "fas fa-map-marker-alt",
+            onSelect = function()
+                TriggerServerEvent('vein-construction:server:getConstructionSites')
+            end
         })
         
-        table.insert(sections, {
-            title = "Job Status",
-            items = {
-                {
-                    title = 'Toggle Status Display',
-                    description = 'Show or hide the job status display',
-                    icon = 'fas fa-eye',
-                    onSelect = function()
-                        ToggleStatusDisplay(true)
-                        UpdateJobStatus({
-                            onDuty = isOnDuty,
-                            rank = GetJobRankLabel() or 'Apprentice',
-                            site = currentSite and Config.Sites[currentSite].label or 'None',
-                            task = currentTask and currentTask.type or 'None'
-                        })
-                        QBCore.Functions.Notify('Status display enabled', 'success')
-                    end
-                }
-            }
+        -- View tasks (depends on current site)
+        if currentSite then
+            table.insert(options, {
+                title = "View Available Tasks",
+                description = "See tasks available at " .. currentSite.name,
+                icon = "fas fa-tasks",
+                onSelect = function()
+                    TriggerEvent('vein-construction:client:showTaskMenu', currentSite.id)
+                end
+            })
+        end
+        
+        -- View current rank and progress
+        table.insert(options, {
+            title = "View Current Rank",
+            description = "Check your rank and progression",
+            icon = "fas fa-star",
+            onSelect = function()
+                TriggerServerEvent('vein-construction:server:getRankInfo')
+            end
+        })
+        
+        -- Tool durability check
+        table.insert(options, {
+            title = "Check Tool Durability",
+            description = "Inspect your tools' condition",
+            icon = "fas fa-tools",
+            onSelect = function()
+                TriggerEvent('vein-construction:client:checkToolDurability')
+            end
         })
     end
     
-    -- Add quit job option
-    table.insert(sections, {
-        title = "Employment",
-        items = {
-            {
-                title = 'Quit Job',
-                description = 'Resign from construction work',
-                icon = 'fas fa-user-times',
-                onSelect = function()
-                    QuitJob()
-                end
-            }
-        }
+    -- Option to quit the job
+    table.insert(options, {
+        title = "Quit Job",
+        description = "Leave the construction job",
+        icon = "fas fa-sign-out-alt",
+        onSelect = function()
+            local confirm = lib.alertDialog({
+                header = 'Quit Construction Job',
+                content = 'Are you sure you want to quit? You will lose your current rank and experience.',
+                centered = true,
+                cancel = true
+            })
+            if confirm == 'confirm' then
+                TriggerServerEvent('vein-construction:server:quitJob')
+            end
+        end
     })
     
-    CreateSectionedMenu('job_management', 'Job Management', sections, nil, footerInfo)
+    -- Try to show the menu with error handling
+    local success = pcall(function()
+        ShowMenu('job_management', 'Job Management', options)
+    end)
+    
+    -- If ShowMenu fails, release control
+    if not success then
+        SetNuiFocus(false, false)
+        if hasOxLib then
+            lib.hideContext()
+        else
+            TriggerEvent('qb-menu:client:closeMenu')
+        end
+        QBCore.Functions.Notify('There was an error opening the menu. Please try again.', 'error')
+    end
 end
 
 -- Helper function to get current rank label
@@ -487,31 +508,22 @@ function GetJobRankLabel()
     return 'Apprentice'
 end
 
--- Toggle duty status
+-- Toggle player duty status
 function ToggleDuty()
-    isOnDuty = not isOnDuty
+    local newDutyStatus = not isOnDuty
     
+    -- Send to server to update job state
+    TriggerServerEvent('QBCore:ToggleDuty')
+    
+    -- Update local state
+    isOnDuty = newDutyStatus
+    
+    -- Notify player
     if isOnDuty then
-        -- Check for safety gear when going on duty
-        if not Vein.HasSafetyGear() then
-            QBCore.Functions.Notify('You need safety gear to work! (Helmet, Vest, Gloves)', 'error')
-            isOnDuty = false
-            return
-        end
-        
-        -- Start safety check timer
-        StartSafetyCheckTimer()
-        QBCore.Functions.Notify('You are now on duty', 'success')
+        QBCore.Functions.Notify('You clocked in for work', 'success')
     else
-        -- If going off duty, cancel current task
-        if currentTask then
-            CancelCurrentTask()
-        end
-        QBCore.Functions.Notify('You are now off duty', 'primary')
+        QBCore.Functions.Notify('You clocked out from work', 'primary')
     end
-    
-    -- Tell server about duty change
-    TriggerServerEvent('vein-construction:server:toggleDuty', isOnDuty)
 end
 
 -- Start periodic safety checks
@@ -939,4 +951,79 @@ end)
 
 exports('GetCurrentTask', function()
     return currentTask
+end)
+
+-- Add event handler for opening job menu
+RegisterNetEvent('vein-construction:client:openJobMenu', function()
+    OpenJobManagementMenu()
+end)
+
+-- Function to check for safety gear
+function CheckSafetyGear()
+    local playerPed = PlayerPedId()
+    local hasHelmet = false
+    local hasVest = false
+    local hasGloves = false
+    local hasBoots = false
+    
+    -- Check if player has construction helmet
+    if HasPedGotAccessory(playerPed, 0) then
+        hasHelmet = true
+    end
+    
+    -- Check inventory for safety items
+    local items = QBCore.Functions.GetPlayerData().items
+    
+    for _, item in pairs(items) do
+        if item.name == "construction_helmet" then
+            hasHelmet = true
+        elseif item.name == "safety_vest" then
+            hasVest = true
+        elseif item.name == "work_gloves" then
+            hasGloves = true
+        elseif item.name == "safety_boots" then
+            hasBoots = true
+        end
+    end
+    
+    local gearStatus = {
+        helmet = hasHelmet,
+        vest = hasVest,
+        gloves = hasGloves,
+        boots = hasBoots
+    }
+    
+    local hasSafetyGear = hasHelmet and hasVest and hasGloves
+    
+    if not hasSafetyGear then
+        local missingItems = {}
+        if not hasHelmet then table.insert(missingItems, "helmet") end
+        if not hasVest then table.insert(missingItems, "safety vest") end
+        if not hasGloves then table.insert(missingItems, "work gloves") end
+        
+        SendNotification("Missing safety gear: " .. table.concat(missingItems, ", "), "error")
+    end
+    
+    return hasSafetyGear
+end
+
+-- Event when resource starts
+RegisterNetEvent('onClientResourceStart', function(resourceName)
+    if (GetCurrentResourceName() ~= resourceName) then 
+        return 
+    end
+    print('Vein Construction: Resource started')
+    Wait(1000) -- Short delay to ensure everything is loaded
+    
+    -- Initial player data load
+    PlayerData = QBCore.Functions.GetPlayerData()
+    
+    -- Setup NPCs, blips and map markers
+    SetupJobBlips()
+    SetupConstructionNPCs()
+    
+    -- Duty status check
+    if PlayerData.job and PlayerData.job.name == 'construction' then
+        isOnDuty = PlayerData.job.onduty
+    end
 end) 

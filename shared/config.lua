@@ -398,4 +398,180 @@ Config.Items = {
         combinable = nil,
         description = 'A belt for carrying heavy materials'
     }
+}
+
+-- NPC locations
+Config.JobNPC = {
+    model = 's_m_y_construct_01',
+    coords = vector3(-97.12, -1013.81, 27.28),
+    heading = 340.0
+}
+
+Config.ShopNPC = {
+    model = 's_m_y_construct_02',
+    coords = vector3(-95.76, -1055.45, 27.42),
+    heading = 160.0
+}
+
+-- Construction sites
+Config.ConstructionSites = {
+    {
+        id = 'downtown',
+        name = 'Downtown Construction Site',
+        coords = vector3(-163.02, -1038.16, 27.27),
+        radius = 20.0,
+        taskLocations = {
+            digging = vector3(-157.52, -1030.78, 27.27),
+            welding = vector3(-175.68, -1029.14, 27.27),
+            hammering = vector3(-170.46, -1037.33, 27.27),
+            measuring = vector3(-159.35, -1042.48, 27.27)
+        }
+    },
+    {
+        id = 'vinewood',
+        name = 'Vinewood Heights Project',
+        coords = vector3(70.67, -458.65, 42.18),
+        radius = 20.0,
+        taskLocations = {
+            digging = vector3(75.83, -455.15, 42.18),
+            welding = vector3(66.12, -458.59, 42.18),
+            hammering = vector3(71.67, -466.31, 42.18),
+            measuring = vector3(80.42, -460.92, 42.18)
+        }
+    },
+    {
+        id = 'elburro',
+        name = 'El Burro Construction',
+        coords = vector3(1247.69, -1964.32, 44.32),
+        radius = 20.0,
+        taskLocations = {
+            digging = vector3(1239.56, -1961.23, 44.32),
+            welding = vector3(1256.85, -1961.83, 44.32),
+            hammering = vector3(1247.71, -1971.18, 44.32),
+            measuring = vector3(1243.25, -1955.67, 44.32)
+        }
+    }
+}
+
+-- Rank configuration
+Config.Ranks = {
+    {
+        name = 'apprentice',
+        label = 'Apprentice',
+        xpRequired = 0,
+        payRate = 15.0,
+        allowedTasks = {'lifting', 'hammering'},
+        bonus = 0
+    },
+    {
+        name = 'skilled_worker',
+        label = 'Skilled Worker',
+        xpRequired = 100,
+        payRate = 25.0,
+        allowedTasks = {'lifting', 'hammering', 'welding', 'measurement'},
+        bonus = 0.1
+    },
+    {
+        name = 'foreman',
+        label = 'Foreman',
+        xpRequired = 300,
+        payRate = 35.0,
+        allowedTasks = {'lifting', 'hammering', 'welding', 'measurement', 'management'},
+        bonus = 0.2
+    },
+    {
+        name = 'site_manager',
+        label = 'Site Manager',
+        xpRequired = 700,
+        payRate = 45.0,
+        allowedTasks = {'lifting', 'hammering', 'welding', 'measurement', 'management', 'planning'},
+        bonus = 0.3
+    }
+}
+
+-- Tool durability configuration
+Config.ToolDurability = {
+    hammer = {
+        maxDurability = 100,
+        usageDamage = 5,
+        repairCost = 25
+    },
+    power_drill = {
+        maxDurability = 100,
+        usageDamage = 4,
+        repairCost = 75
+    },
+    wrench_set = {
+        maxDurability = 100,
+        usageDamage = 3,
+        repairCost = 50
+    },
+    measuring_tape = {
+        maxDurability = 100,
+        usageDamage = 2,
+        repairCost = 20
+    },
+    screwdriver_set = {
+        maxDurability = 100,
+        usageDamage = 3,
+        repairCost = 40
+    }
+}
+
+-- Safety gear requirements
+Config.SafetyGear = {
+    required = {'construction_helmet', 'safety_vest', 'work_gloves'},
+    optional = {'safety_boots'}
+}
+
+-- Task configuration
+Config.Tasks = {
+    lifting = {
+        label = 'Material Lifting',
+        xp = 5,
+        pay = 50,
+        duration = 10000,
+        requiredRank = 'apprentice',
+        requiredTools = {}
+    },
+    hammering = {
+        label = 'Hammering',
+        xp = 7,
+        pay = 75,
+        duration = 15000,
+        requiredRank = 'apprentice',
+        requiredTools = {'hammer'}
+    },
+    welding = {
+        label = 'Welding',
+        xp = 10,
+        pay = 100,
+        duration = 20000,
+        requiredRank = 'skilled_worker',
+        requiredTools = {'welding_torch'}
+    },
+    measurement = {
+        label = 'Measurement & Planning',
+        xp = 8,
+        pay = 80,
+        duration = 12000,
+        requiredRank = 'skilled_worker',
+        requiredTools = {'measuring_tape'}
+    },
+    management = {
+        label = 'Worker Management',
+        xp = 15,
+        pay = 150,
+        duration = 30000,
+        requiredRank = 'foreman',
+        requiredTools = {}
+    },
+    planning = {
+        label = 'Site Planning',
+        xp = 20,
+        pay = 200,
+        duration = 45000,
+        requiredRank = 'site_manager',
+        requiredTools = {'measuring_tape'}
+    }
 } 

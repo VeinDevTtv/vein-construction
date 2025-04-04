@@ -486,84 +486,31 @@ Vein.GetRankByXP = function(xp)
     return Config.Ranks[highestRankIndex]
 end
 
--- Buy item event handler
-RegisterNetEvent('vein-construction:server:buyItem')
-AddEventHandler('vein-construction:server:buyItem', function(itemName, itemType)
+-- Buy item from construction shop
+RegisterNetEvent('vein-construction:server:buyItem', function(itemName, price)
     local src = source
     local Player = QBCore.Functions.GetPlayer(src)
     
     if not Player then return end
     
-    local prices = {
-        -- Safety equipment
-        construction_helmet = 75,
-        safety_vest = 50,
-        work_gloves = 35,
-        safety_kit = 150,
+    -- Check if player has enough cash
+    if Player.Functions.GetMoney('cash') >= price then
+        -- Remove cash
+        Player.Functions.RemoveMoney('cash', price)
         
-        -- Tools
-        hammer = 100,
-        power_drill = 250,
-        measuring_tape = 40,
-        shovel = 120,
-        welding_torch = 350,
-        
-        -- Materials
-        concrete_mix = 45,
-        lumber = 60,
-        steel_beams = 120,
-        bricks = 85,
-        paint = 30
-    }
-    
-    local price = prices[itemName]
-    if not price then
-        TriggerClientEvent('QBCore:Notify', src, 'Item not found in shop', 'error')
-        return
-    end
-    
-    -- Check if player has enough money
-    if Player.PlayerData.money.cash < price then
-        TriggerClientEvent('QBCore:Notify', src, 'Not enough cash', 'error')
-        return
-    end
-    
-    -- Special handling for safety kit (adds multiple items)
-    if itemName == 'safety_kit' then
-        -- Remove money first
-        Player.Functions.RemoveMoney('cash', price, 'construction-shop-purchase')
-        
-        -- Add each safety item
-        local success = true
-        success = success and Player.Functions.AddItem('construction_helmet', 1)
-        success = success and Player.Functions.AddItem('safety_vest', 1)
-        success = success and Player.Functions.AddItem('work_gloves', 1)
+        -- Add item to inventory
+        local success = Player.Functions.AddItem(itemName, 1)
         
         if success then
-            TriggerClientEvent('inventory:client:ItemBox', src, QBCore.Shared.Items['construction_helmet'], 'add')
-            TriggerClientEvent('inventory:client:ItemBox', src, QBCore.Shared.Items['safety_vest'], 'add')
-            TriggerClientEvent('inventory:client:ItemBox', src, QBCore.Shared.Items['work_gloves'], 'add')
-            TriggerClientEvent('QBCore:Notify', src, 'Safety kit purchased for $' .. price, 'success')
+            -- Notify player
+            TriggerClientEvent('QBCore:Notify', src, 'You purchased a ' .. itemName, 'success')
+            TriggerClientEvent('inventory:client:ItemBox', src, QBCore.Shared.Items[itemName], "add")
         else
-            -- If failed, give money back
-            Player.Functions.AddMoney('cash', price, 'construction-shop-refund')
-            TriggerClientEvent('QBCore:Notify', src, 'Cannot carry safety kit items', 'error')
+            -- Refund if item couldn't be added
+            Player.Functions.AddMoney('cash', price)
+            TriggerClientEvent('QBCore:Notify', src, 'Cannot carry more ' .. itemName, 'error')
         end
-        return
-    end
-    
-    -- For regular items
-    -- Remove money first
-    Player.Functions.RemoveMoney('cash', price, 'construction-shop-purchase')
-    
-    -- Add the item
-    local success = Player.Functions.AddItem(itemName, 1)
-    if success then
-        TriggerClientEvent('inventory:client:ItemBox', src, QBCore.Shared.Items[itemName], 'add')
-        TriggerClientEvent('QBCore:Notify', src, itemName:gsub("_", " "):gsub("^%l", string.upper) .. ' purchased for $' .. price, 'success')
     else
-        -- If failed, give money back
-        Player.Functions.AddMoney('cash', price, 'construction-shop-refund')
-        TriggerClientEvent('QBCore:Notify', src, 'Cannot carry this item', 'error')
+        TriggerClientEvent('QBCore:Notify', src, 'Not enough cash', 'error')
     end
 end)
