@@ -10,6 +10,7 @@ end
 
 -- Function to handle notifications based on available libraries
 function SendNotification(title, message, type, icon)
+    -- This will be overridden by the function in ui.lua
     if lib then
         lib.notify({
             title = title,
@@ -24,80 +25,10 @@ function SendNotification(title, message, type, icon)
     end
 end
 
--- Function to show a menu based on what's available
-function ShowMenu(id, title, options, parent)
-    if not options then options = {} end
-    
-    if lib then
-        -- Use ox_lib context menu
-        local contextOptions = {
-            id = id,
-            title = title,
-            options = options
-        }
-        
-        if parent then
-            contextOptions.menu = parent
-        end
-        
-        -- Ensure each option has required fields
-        for i, option in ipairs(options) do
-            if not option.title then option.title = 'Untitled' end
-            if not option.description then option.description = '' end
-            if not option.icon then option.icon = 'fas fa-circle' end
-            
-            -- Convert onSelect to event if needed
-            if option.onSelect then
-                local eventName = ('__ox_cb_%s_%s'):format(id, i)
-                AddEventHandler(eventName, option.onSelect)
-                option.event = eventName
-            end
-        end
-        
-        lib.registerContext(contextOptions)
-        lib.showContext(id)
-    else
-        -- Use QBCore menu as fallback
-        local menuItems = {}
-        for i, option in ipairs(options) do
-            table.insert(menuItems, {
-                header = option.title or 'Untitled',
-                txt = option.description or '',
-                icon = option.icon or 'fas fa-circle',
-                params = {
-                    event = option.event,
-                    args = option.args,
-                    isAction = option.onSelect ~= nil,
-                    action = option.onSelect
-                }
-            })
-        end
-        
-        QBCore.UI.Menu.Open('default', GetCurrentResourceName(), id, {
-            title = title,
-            align = 'top-left',
-            elements = menuItems
-        }, function(data, menu)
-            if data.current and data.current.params then
-                if data.current.params.isAction and data.current.params.action then
-                    data.current.params.action()
-                elseif data.current.params.event then
-                    TriggerEvent(data.current.params.event, data.current.params.args)
-                end
-            end
-        end, function(data, menu)
-            menu.close()
-            if parent then
-                ShowMenu(parent, '', {}, nil)
-            end
-        end)
-    end
-end
-
 -- Register an event to expose the ShowMenu function
 RegisterNetEvent('vein-construction:internal:showMenu')
 AddEventHandler('vein-construction:internal:showMenu', function(id, title, options, parent)
-    ShowMenu(id, title, options, parent)
+    -- This will be handled by the function in ui.lua
 end)
 
 -- Register events for random occurrences and special cases
@@ -267,7 +198,7 @@ RegisterNetEvent('vein-construction:client:displayActiveProjects', function(proj
     end
     
     ShowMenu('active_projects', 'Active Projects', options, 'project_menu')
-end)
+end
 
 -- View details of a specific project
 function ViewProjectDetails(project)

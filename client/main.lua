@@ -7,8 +7,10 @@ if GetResourceState('ox_lib') ~= 'missing' then
     lib = exports.ox_lib
 end
 
--- Import the ShowMenu function from client/events.lua
+-- Import the ShowMenu function from client/ui.lua
 local ShowMenu = function(id, title, options, parent)
+    -- This function will be replaced by the global function in ui.lua
+    -- We keep this for backward compatibility
     TriggerEvent('vein-construction:internal:showMenu', id, title, options, parent)
 end
 

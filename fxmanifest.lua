@@ -21,13 +21,22 @@ client_scripts {
     'client/main.lua',
     'client/tasks.lua',
     'client/events.lua',
-    'client/npc.lua'
+    'client/npc.lua',
+    'client/ui.lua'
 }
 
 server_scripts {
     '@oxmysql/lib/MySQL.lua',
     'server/main.lua',
     'server/progression.lua'
+}
+
+ui_page 'html/index.html'
+
+files {
+    'html/index.html',
+    'html/css/style.css',
+    'html/js/app.js'
 }
 
 lua54 'yes'
