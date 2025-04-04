@@ -1,18 +1,53 @@
 -- Initialize QBCore
 local QBCore = exports['qb-core']:GetCoreObject()
 local PlayerData = QBCore.Functions.GetPlayerData()
+local hasOxLib = false
 local lib
 
--- Check if ox_lib is available and define lib
-if GetResourceState('ox_lib') ~= 'missing' then
-    lib = exports.ox_lib
+-- Check if ox_lib is available
+Citizen.CreateThread(function()
+    -- Check if ox_lib is available
+    if GetResourceState('ox_lib') == 'started' then
+        hasOxLib = true
+        lib = exports['ox_lib']
+    end
+    print('ox_lib detection in Events module:', hasOxLib)
+end)
+
+-- Function to safely use ox_lib
+function SafelyUseOxLib(action, ...)
+    if hasOxLib and lib then
+        if action == 'hideContext' then
+            return lib.hideContext(...)
+        elseif action == 'registerContext' then
+            return lib.registerContext(...)
+        elseif action == 'showContext' then
+            return lib.showContext(...)
+        elseif action == 'alertDialog' then
+            return lib.alertDialog(...)
+        elseif action == 'progressBar' then
+            return lib.progressBar(...)
+        elseif action == 'notify' then
+            return lib.notify(...)
+        elseif action == 'showTextUI' then
+            return lib.showTextUI(...)
+        elseif action == 'hideTextUI' then
+            return lib.hideTextUI(...)
+        else
+            print('Unknown action:', action)
+            return nil
+        end
+    else
+        print('ox_lib not available for action:', action)
+        return nil
+    end
 end
 
 -- Function to handle notifications based on available libraries
 function SendNotification(title, message, type, icon)
     -- This will be overridden by the function in ui.lua
-    if lib then
-        lib.notify({
+    if hasOxLib and lib then
+        SafelyUseOxLib('notify', {
             title = title,
             description = message,
             type = type or 'info',
@@ -282,7 +317,7 @@ RegisterNetEvent('vein-construction:client:displayActiveProjects', function(proj
     end
     
     ShowMenu('active_projects', 'Active Projects', options, 'project_menu')
-end)
+end
 
 -- View details of a specific project
 function ViewProjectDetails(project)
@@ -355,4 +390,36 @@ function ShowRankInformation()
     end
     
     ShowMenu('rank_information', 'Job Ranks', options, 'construction_job_info')
+end
+
+-- View active construction projects
+RegisterNetEvent('vein-construction:client:viewActiveProjects', function(projects)
+    if #projects == 0 then
+        SendNotification('No active projects', 'error')
+        return
+    end
+    
+    local options = {}
+    
+    for i, project in ipairs(projects) do
+        table.insert(options, {
+            title = project.name,
+            description = 'Location: ' .. project.location .. '\nProgress: ' .. project.progress .. '%',
+            icon = 'fas fa-building',
+            onSelect = function()
+                TriggerServerEvent('vein-construction:server:getProjectDetails', project.id)
+            end
+        })
+    end
+    
+    table.insert(options, {
+        title = 'Back',
+        description = 'Return to project menu',
+        icon = 'fas fa-arrow-left',
+        onSelect = function()
+            OpenProjectMenu()
+        end
+    })
+    
+    ShowMenu('active_projects', 'Active Projects', options, 'project_menu')
 end

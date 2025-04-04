@@ -6,6 +6,48 @@ local materialProps = {
     wood_planks = 'prop_cons_plank'
 }
 
+-- Check if ox_lib is available
+local hasOxLib = false
+
+-- Check for ox_lib on resource start
+Citizen.CreateThread(function()
+    -- Check if ox_lib is available
+    if GetResourceState('ox_lib') == 'started' then
+        hasOxLib = true
+        -- lib will be available globally if ox_lib is loaded
+    end
+    print('ox_lib detection in Tasks module:', hasOxLib)
+end)
+
+-- Function to safely use ox_lib
+function SafelyUseOxLib(action, ...)
+    if hasOxLib and type(_G.lib) == "table" then
+        if action == 'hideContext' and _G.lib.hideContext then
+            return _G.lib.hideContext(...)
+        elseif action == 'registerContext' and _G.lib.registerContext then
+            return _G.lib.registerContext(...)
+        elseif action == 'showContext' and _G.lib.showContext then
+            return _G.lib.showContext(...)
+        elseif action == 'alertDialog' and _G.lib.alertDialog then
+            return _G.lib.alertDialog(...)
+        elseif action == 'progressBar' and _G.lib.progressBar then
+            return _G.lib.progressBar(...)
+        elseif action == 'notify' and _G.lib.notify then
+            return _G.lib.notify(...)
+        elseif action == 'showTextUI' and _G.lib.showTextUI then
+            return _G.lib.showTextUI(...)
+        elseif action == 'hideTextUI' and _G.lib.hideTextUI then
+            return _G.lib.hideTextUI(...)
+        else
+            print('Unknown action or method not available:', action)
+            return nil
+        end
+    else
+        print('ox_lib not available for action:', action)
+        return nil
+    end
+end
+
 -- Helper function to check and add tool usage (durability)
 function AddToolUsage(toolName)
     if not toolDurabilities[toolName] then
@@ -105,19 +147,38 @@ function PickupMaterial()
     -- Start carrying animation
     isCarryingObject = true
     
-    lib.progressBar({
-        duration = 3000,
-        label = 'Picking up ' .. materialType:gsub("_", " ") .. '...',
-        useWhileDead = false,
-        canCancel = true,
-        disable = {
-            car = true,
-        },
-        anim = {
-            dict = 'anim@heists@box_carry@',
-            clip = 'idle'
-        }
-    })
+    if hasOxLib and type(_G.lib) == "table" then
+        SafelyUseOxLib('progressBar', {
+            duration = 3000,
+            label = 'Picking up ' .. materialType:gsub("_", " ") .. '...',
+            useWhileDead = false,
+            canCancel = true,
+            disable = {
+                car = true,
+            },
+            anim = {
+                dict = 'anim@heists@box_carry@',
+                clip = 'idle'
+            }
+        })
+    else
+        -- Fallback to QBCore progress bar
+        QBCore.Functions.Progressbar("pickup_material", 'Picking up ' .. materialType:gsub("_", " ") .. '...', 3000, false, true, {
+            disableMovement = true,
+            disableCarMovement = true,
+            disableMouse = false,
+            disableCombat = true,
+        }, {
+            animDict = 'anim@heists@box_carry@',
+            anim = 'idle',
+            flags = 49,
+        }, {}, {}, function() -- Done
+            -- Completed
+        end, function() -- Cancel
+            isCarryingObject = false
+            ClearPedTasks(PlayerPedId())
+        end)
+    end
     
     -- Create prop and attach to player
     local playerPed = PlayerPedId()
@@ -195,20 +256,39 @@ function DropoffMaterial()
     end
     
     -- Complete task
-    lib.progressBar({
-        duration = 2000,
-        label = 'Placing materials...',
-        useWhileDead = false,
-        canCancel = true,
-        disable = {
-            car = true,
-            move = true
-        },
-        anim = {
-            dict = 'random@domestic',
-            clip = 'pickup_low'
-        }
-    })
+    if hasOxLib and type(_G.lib) == "table" then
+        SafelyUseOxLib('progressBar', {
+            duration = 2000,
+            label = 'Placing materials...',
+            useWhileDead = false,
+            canCancel = true,
+            disable = {
+                car = true,
+                move = true
+            },
+            anim = {
+                dict = 'random@domestic',
+                clip = 'pickup_low'
+            }
+        })
+    else
+        -- Fallback to QBCore progress bar
+        QBCore.Functions.Progressbar("dropoff_material", 'Placing materials...', 2000, false, true, {
+            disableMovement = true,
+            disableCarMovement = true,
+            disableMouse = false,
+            disableCombat = true,
+        }, {
+            animDict = 'random@domestic',
+            anim = 'pickup_low',
+            flags = 49,
+        }, {}, {}, function() -- Done
+            -- Completed
+        end, function() -- Cancel
+            isCarryingObject = false
+            ClearPedTasks(PlayerPedId())
+        end)
+    end
     
     -- Complete task and reward player
     CompleteTask()

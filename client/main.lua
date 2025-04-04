@@ -49,7 +49,17 @@ local currentSite = nil
 local activeBlips = {}
 local safetyCheckTimer = nil
 local toolDurabilities = {}
-local hasOxLib = GetResourceState('ox_lib') == 'started'
+local hasOxLib = false
+
+-- Check if ox_lib is available
+Citizen.CreateThread(function()
+    -- Check if ox_lib is available
+    if GetResourceState('ox_lib') == 'started' then
+        hasOxLib = true
+        lib = exports['ox_lib']
+    end
+    print('ox_lib detection in main module:', hasOxLib)
+end)
 
 -- Initialize the script
 Citizen.CreateThread(function()
@@ -464,14 +474,32 @@ function OpenJobManagementMenu()
         description = "Leave the construction job",
         icon = "fas fa-sign-out-alt",
         onSelect = function()
-            local confirm = lib.alertDialog({
-                header = 'Quit Construction Job',
-                content = 'Are you sure you want to quit? You will lose your current rank and experience.',
-                centered = true,
-                cancel = true
-            })
-            if confirm == 'confirm' then
-                TriggerServerEvent('vein-construction:server:quitJob')
+            -- Create confirmation dialog with QBCore if ox_lib is not available
+            if hasOxLib and lib then
+                local confirm = SafelyUseOxLib('alertDialog', {
+                    header = 'Quit Construction Job',
+                    content = 'Are you sure you want to quit? You will lose your current rank and experience.',
+                    centered = true,
+                    cancel = true
+                })
+                if confirm == 'confirm' then
+                    TriggerServerEvent('vein-construction:server:quitJob')
+                end
+            else
+                -- Fallback to QBCore dialog
+                QBCore.Functions.TriggerCallback('QBCore:Dialog:CloseDialog', {
+                    header = "Quit Construction Job",
+                    rows = {
+                        {
+                            id = 0,
+                            txt = "Are you sure you want to quit? You will lose your current rank and experience."
+                        }
+                    }
+                }, function(result)
+                    if result then
+                        TriggerServerEvent('vein-construction:server:quitJob')
+                    end
+                end)
             end
         end
     })
@@ -481,11 +509,36 @@ function OpenJobManagementMenu()
         ShowMenu('job_management', 'Job Management', options)
     end)
     
+    -- Function to safely use ox_lib
+    function SafelyUseOxLib(action, ...)
+        if hasOxLib and lib then
+            if action == 'hideContext' then
+                return lib.hideContext(...)
+            elseif action == 'registerContext' then
+                return lib.registerContext(...)
+            elseif action == 'showContext' then
+                return lib.showContext(...)
+            elseif action == 'alertDialog' then
+                return lib.alertDialog(...)
+            elseif action == 'progressBar' then
+                return lib.progressBar(...)
+            elseif action == 'notify' then
+                return lib.notify(...)
+            else
+                print('Unknown ox_lib action:', action)
+                return nil
+            end
+        else
+            print('ox_lib is not available for action:', action)
+            return nil
+        end
+    end
+
     -- If ShowMenu fails, release control
     if not success then
         SetNuiFocus(false, false)
         if hasOxLib then
-            lib.hideContext()
+            SafelyUseOxLib('hideContext')
         else
             TriggerEvent('qb-menu:client:closeMenu')
         end
@@ -610,8 +663,8 @@ RegisterNetEvent('vein-construction:client:showRankInfo', function(rankName, xp,
         description = description .. '\nCommission: ' .. (currentRank.commission * 100) .. '%'
     end
     
-    if lib then
-        lib.notify({
+    if hasOxLib and lib then
+        SafelyUseOxLib('notify', {
             title = title,
             description = description,
             type = 'info',
@@ -1103,4 +1156,32 @@ function GetAllBlips()
         end
     end
     return blips
-end 
+end
+
+-- Notify player of their current rank
+RegisterNetEvent('vein-construction:client:notifyRankUp', function(rankData)
+    local currentRank = rankData
+    
+    local title = 'Construction Job Rank: ' .. currentRank.label
+    local description = 'XP: ' .. currentRank.currentXP .. ' / ' .. currentRank.nextXP
+    
+    if currentRank.hourlyRate then
+        description = description .. '\nHourly Rate: $' .. currentRank.hourlyRate
+    end
+    
+    if currentRank.commission then
+        description = description .. '\nCommission: ' .. (currentRank.commission * 100) .. '%'
+    end
+    
+    if hasOxLib and lib then
+        SafelyUseOxLib('notify', {
+            title = title,
+            description = description,
+            type = 'info',
+            position = 'top',
+            duration = 5000
+        })
+    else
+        QBCore.Functions.Notify(title .. '\n' .. description, 'primary', 5000)
+    end
+end) 

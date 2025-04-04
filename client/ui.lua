@@ -24,7 +24,18 @@ local jobStatus = {
 }
 
 -- Check if ox_lib is available
-local hasOxLib = GetResourceState('ox_lib') == 'started'
+local hasOxLib = false
+local lib = nil
+
+Citizen.CreateThread(function()
+    -- Check if ox_lib is available
+    if GetResourceState('ox_lib') == 'started' then
+        hasOxLib = true
+        lib = exports['ox_lib']
+    end
+    print('ox_lib detected:', hasOxLib)
+end)
+
 local debugMode = false -- Set to true for debugging
 
 -- Debug logging function
@@ -89,11 +100,40 @@ function ShowUIMenu(id, title, options, parent, footerInfo)
     SetNuiFocus(true, true)
 end
 
+-- Function to safely use ox_lib
+function SafelyUseOxLib(action, ...)
+    if hasOxLib and lib then
+        if action == 'hideContext' then
+            return lib.hideContext(...)
+        elseif action == 'registerContext' then
+            return lib.registerContext(...)
+        elseif action == 'showContext' then
+            return lib.showContext(...)
+        elseif action == 'alertDialog' then
+            return lib.alertDialog(...)
+        elseif action == 'progressBar' then
+            return lib.progressBar(...)
+        elseif action == 'notify' then
+            return lib.notify(...)
+        elseif action == 'showTextUI' then
+            return lib.showTextUI(...)
+        elseif action == 'hideTextUI' then
+            return lib.hideTextUI(...)
+        else
+            print('Unknown ox_lib action:', action)
+            return nil
+        end
+    else
+        print('ox_lib is not available for action:', action)
+        return nil
+    end
+end
+
 -- Function to close any open menus
 function CloseMenu()
     debugLog('CloseMenu called')
-    if hasOxLib then
-        lib.hideContext()
+    if hasOxLib and lib then
+        SafelyUseOxLib('hideContext')
     else
         TriggerEvent('qb-menu:client:closeMenu')
     end
@@ -265,7 +305,7 @@ function ShowMenu(id, title, options, parent)
     SetNuiFocus(false, false)
     
     -- If ox_lib is available, use it
-    if hasOxLib then
+    if hasOxLib and lib then
         debugLog('Using ox_lib for menu')
         -- Create menu context
         local contextOptions = {
@@ -280,8 +320,8 @@ function ShowMenu(id, title, options, parent)
         end
         
         -- Register and show context menu
-        lib.registerContext(contextOptions)
-        lib.showContext(id)
+        SafelyUseOxLib('registerContext', contextOptions)
+        SafelyUseOxLib('showContext', id)
     else
         debugLog('Using QBCore menu')
         -- Fallback to QBCore menu if ox_lib is not available
@@ -372,8 +412,8 @@ function SendNotification(message, type, duration)
     
     debugLog('SendNotification:', message, type, duration)
     
-    if hasOxLib then
-        lib.notify({
+    if hasOxLib and lib then
+        SafelyUseOxLib('notify', {
             title = 'Construction Job',
             description = message,
             type = type,
@@ -391,8 +431,8 @@ function ShowAlert(message, type, icon)
     
     debugLog('ShowAlert:', message, type)
     
-    if hasOxLib then
-        lib.showTextUI(message, {
+    if hasOxLib and lib then
+        SafelyUseOxLib('showTextUI', message, {
             position = "right-center",
             icon = icon,
             style = {
@@ -402,7 +442,7 @@ function ShowAlert(message, type, icon)
             }
         })
         Wait(3000)
-        lib.hideTextUI()
+        SafelyUseOxLib('hideTextUI')
     else
         QBCore.Functions.Notify(message, type, 3000)
     end
@@ -412,8 +452,8 @@ end
 function ShowProgressBar(label, duration, canCancel, animation)
     debugLog('ShowProgressBar:', label, duration)
     
-    if hasOxLib then
-        return lib.progressBar({
+    if hasOxLib and lib then
+        return SafelyUseOxLib('progressBar', {
             duration = duration,
             label = label,
             useWhileDead = false,

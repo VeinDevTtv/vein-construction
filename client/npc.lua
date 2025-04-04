@@ -4,12 +4,41 @@ local PlayerData = {}
 local isOnDuty = false
 
 -- Check if ox_lib is available
-local hasOxLib = GetResourceState('ox_lib') == 'started'
+local hasOxLib = false
 
 -- Initialize player data
 RegisterNetEvent('QBCore:Client:OnPlayerLoaded', function()
     PlayerData = QBCore.Functions.GetPlayerData()
 end)
+
+-- Function to safely use ox_lib
+function SafelyUseOxLib(action, ...)
+    if hasOxLib and type(_G.lib) == "table" then
+        if action == 'hideContext' and _G.lib.hideContext then
+            return _G.lib.hideContext(...)
+        elseif action == 'registerContext' and _G.lib.registerContext then
+            return _G.lib.registerContext(...)
+        elseif action == 'showContext' and _G.lib.showContext then
+            return _G.lib.showContext(...)
+        elseif action == 'alertDialog' and _G.lib.alertDialog then
+            return _G.lib.alertDialog(...)
+        elseif action == 'progressBar' and _G.lib.progressBar then
+            return _G.lib.progressBar(...)
+        elseif action == 'notify' and _G.lib.notify then
+            return _G.lib.notify(...)
+        elseif action == 'showTextUI' and _G.lib.showTextUI then
+            return _G.lib.showTextUI(...)
+        elseif action == 'hideTextUI' and _G.lib.hideTextUI then
+            return _G.lib.hideTextUI(...)
+        else
+            print('Unknown action or method not available:', action)
+            return nil
+        end
+    else
+        print('ox_lib not available for action:', action)
+        return nil
+    end
+end
 
 RegisterNetEvent('QBCore:Client:OnJobUpdate', function(JobInfo)
     PlayerData.job = JobInfo
@@ -18,6 +47,16 @@ end)
 -- NPC Variables
 local jobNPC = nil
 local shopNPC = nil
+
+-- Check for ox_lib on resource start
+Citizen.CreateThread(function()
+    -- Check if ox_lib is available
+    if GetResourceState('ox_lib') == 'started' then
+        hasOxLib = true
+        -- lib will be available globally if ox_lib is loaded
+    end
+    print('ox_lib detection in NPC module:', hasOxLib)
+end)
 
 -- Create job NPC and add target interactions
 function CreateJobNPC()
@@ -233,8 +272,10 @@ end
 function ReleaseUIControl()
     SetNuiFocus(false, false)
     TriggerEvent('qb-menu:client:closeMenu')
-    if hasOxLib then
-        lib.hideContext()
+    
+    -- Check both hasOxLib and if lib is defined
+    if hasOxLib and type(_G.lib) == "table" and _G.lib.hideContext then
+        SafelyUseOxLib('hideContext')
     end
 end
 
