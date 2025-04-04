@@ -1,3 +1,86 @@
+-- Initialize QBCore
+local QBCore = exports['qb-core']:GetCoreObject()
+
+-- Check if ox_lib is available and define lib
+local lib
+if GetResourceState('ox_lib') ~= 'missing' then
+    lib = exports.ox_lib
+end
+
+-- Create local Vein utility object
+Vein = {
+    -- Check if player has required items
+    HasRequiredItems = function(items)
+        if not items then return true end
+        
+        for _, item in ipairs(items) do
+            if not QBCore.Functions.HasItem(item) then
+                return false
+            end
+        end
+        
+        return true
+    end,
+    
+    -- Check if player has all safety gear
+    HasSafetyGear = function()
+        for _, item in ipairs(Config.SafetyGear) do
+            if not QBCore.Functions.HasItem(item) then
+                return false
+            end
+        end
+        
+        return true
+    end
+}
+
+-- Function to show a menu based on what's available
+function ShowMenu(id, title, options, parent)
+    if lib then
+        -- Use ox_lib context menu
+        lib.registerContext({
+            id = id,
+            title = title,
+            menu = parent,
+            options = options
+        })
+        
+        lib.showContext(id)
+    else
+        -- Use QBCore menu as fallback
+        local menuItems = {}
+        for i, option in ipairs(options) do
+            table.insert(menuItems, {
+                header = option.title,
+                txt = option.description or '',
+                icon = option.icon,
+                params = {
+                    event = option.event,
+                    args = option.args,
+                    isAction = option.onSelect ~= nil,
+                    action = option.onSelect
+                }
+            })
+        end
+        
+        QBCore.UI.Menu.Open('default', GetCurrentResourceName(), id, {
+            title = title,
+            align = 'top-left',
+            elements = menuItems
+        }, function(data, menu)
+            local selected = options[data.current.value]
+            if selected.onSelect then
+                selected.onSelect()
+            end
+        end, function(data, menu)
+            menu.close()
+            if parent then
+                ShowMenu(parent, '', {}, nil) -- Reopen parent menu
+            end
+        end)
+    end
+end
+
 -- Local variables
 local PlayerData = {}
 local isOnDuty = false
@@ -139,67 +222,58 @@ end
 
 -- Open job application menu
 function OpenJobMenu()
-    lib.registerContext({
-        id = 'construction_job_menu',
-        title = 'Construction Job',
-        options = {
-            {
-                title = 'Apply for Construction Job',
-                description = 'Apply to work as a construction worker',
-                icon = 'fas fa-hard-hat',
-                onSelect = function()
-                    ApplyForJob()
-                end
-            },
-            {
-                title = 'Construction Job Information',
-                description = 'Learn more about the job',
-                icon = 'fas fa-info-circle',
-                onSelect = function()
-                    ShowJobInformation()
-                end
-            }
+    local options = {
+        {
+            title = 'Apply for Construction Job',
+            description = 'Apply to work as a construction worker',
+            icon = 'fas fa-hard-hat',
+            onSelect = function()
+                ApplyForJob()
+            end
+        },
+        {
+            title = 'Construction Job Information',
+            description = 'Learn more about the job',
+            icon = 'fas fa-info-circle',
+            onSelect = function()
+                ShowJobInformation()
+            end
         }
-    })
+    }
     
-    lib.showContext('construction_job_menu')
+    ShowMenu('construction_job_menu', 'Construction Job', options)
 end
 
 -- Show job information
 function ShowJobInformation()
-    lib.registerContext({
-        id = 'construction_job_info',
-        title = 'Job Information',
-        menu = 'construction_job_menu',
-        options = {
-            {
-                title = 'Job Ranks',
-                description = 'View available job ranks',
-                icon = 'fas fa-user-tie',
-                onSelect = function()
-                    ShowRankInformation()
-                end
-            },
-            {
-                title = 'Job Tasks',
-                description = 'Learn about construction tasks',
-                icon = 'fas fa-tasks',
-                onSelect = function()
-                    ShowTaskInformation()
-                end
-            },
-            {
-                title = 'Required Equipment',
-                description = 'View required tools and safety gear',
-                icon = 'fas fa-tools',
-                onSelect = function()
-                    ShowEquipmentInformation()
-                end
-            }
+    local options = {
+        {
+            title = 'Job Ranks',
+            description = 'View available job ranks',
+            icon = 'fas fa-user-tie',
+            onSelect = function()
+                ShowRankInformation()
+            end
+        },
+        {
+            title = 'Job Tasks',
+            description = 'Learn about construction tasks',
+            icon = 'fas fa-tasks',
+            onSelect = function()
+                ShowTaskInformation()
+            end
+        },
+        {
+            title = 'Required Equipment',
+            description = 'View required tools and safety gear',
+            icon = 'fas fa-tools',
+            onSelect = function()
+                ShowEquipmentInformation()
+            end
         }
-    })
+    }
     
-    lib.showContext('construction_job_info')
+    ShowMenu('construction_job_info', 'Job Information', options, 'construction_job_menu')
 end
 
 -- Show rank information
@@ -429,7 +503,7 @@ function TriggerSafetyInspection()
     QBCore.Functions.Notify('OSHA inspector approaching!', 'primary')
     Citizen.Wait(10000) -- Give player time to put on safety gear
     
-    if not Vein.HasSafetyGear() then
+    if not Vein.HasSafetyGear(nil) then
         -- Player failed inspection, apply fine
         QBCore.Functions.Notify('You failed the safety inspection and received a fine!', 'error')
         TriggerServerEvent('vein-construction:server:payFine', Config.RandomEvents.safetyInspection.fine)
@@ -457,14 +531,7 @@ function SelectConstructionSite()
         })
     end
     
-    lib.registerContext({
-        id = 'select_site',
-        title = 'Select Construction Site',
-        menu = 'job_management',
-        options = options
-    })
-    
-    lib.showContext('select_site')
+    ShowMenu('select_site', 'Select Construction Site', options, 'job_management')
 end
 
 -- View current rank and XP
@@ -724,8 +791,9 @@ RegisterNetEvent('vein-construction:client:startTask', function(taskType)
     end
     
     -- Check if player has required items
-    if not Vein.HasRequiredItems(Config.RequiredItems[taskType]) then
-        local requiredItemsText = table.concat(Config.RequiredItems[taskType], ', ')
+    local requiredItems = Config.RequiredItems[taskType]
+    if not Vein.HasRequiredItems(nil, requiredItems) then
+        local requiredItemsText = table.concat(requiredItems, ', ')
         requiredItemsText = requiredItemsText:gsub('_', ' ')
         QBCore.Functions.Notify('You need: ' .. requiredItemsText, 'error')
         return

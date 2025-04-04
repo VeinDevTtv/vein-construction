@@ -41,4 +41,6 @@ escrow_ignore {
     'shared/config.lua',
     'locales/*.lua',
     'README.md'
-} 
+}
+
+server_export 'GetSharedObject' 
