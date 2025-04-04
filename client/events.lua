@@ -238,7 +238,7 @@ RegisterNetEvent('vein-construction:client:displayActiveProjects', function(proj
     end
     
     ShowMenu('active_projects', 'Active Projects', options, 'project_menu')
-end
+end)
 
 -- View details of a specific project
 function ViewProjectDetails(project)
