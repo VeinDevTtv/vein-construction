@@ -400,7 +400,7 @@ RegisterNetEvent('vein-construction:client:previewTask', function(taskType)
                 disabled = not req.hasItem,
                 onSelect = false
             })
-        }
+        end
         
         CreateSectionedMenu('task_preview', 'Task Preview', {requirementsSection}, 'rank_tasks')
     else
