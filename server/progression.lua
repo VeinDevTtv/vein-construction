@@ -1,3 +1,6 @@
+-- Initialize QBCore
+local QBCore = exports['qb-core']:GetCoreObject()
+
 -- XP and progression related functions
 
 -- Check for rank requirements for different tasks
