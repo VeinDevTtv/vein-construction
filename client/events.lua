@@ -26,15 +26,21 @@ end
 
 -- Function to show a menu based on what's available
 function ShowMenu(id, title, options, parent)
+    if not options then options = {} end
+    
     if lib then
         -- Use ox_lib context menu
-        lib.registerContext({
+        local contextOptions = {
             id = id,
             title = title,
-            menu = parent,
             options = options
-        })
+        }
         
+        if parent then
+            contextOptions.menu = parent
+        end
+        
+        lib.registerContext(contextOptions)
         lib.showContext(id)
     else
         -- Use QBCore menu as fallback
@@ -58,14 +64,16 @@ function ShowMenu(id, title, options, parent)
             align = 'top-left',
             elements = menuItems
         }, function(data, menu)
-            local selected = options[data.current.value]
-            if selected.onSelect then
-                selected.onSelect()
+            if data.current and data.current.value then
+                local selected = options[data.current.value]
+                if selected and selected.onSelect then
+                    selected.onSelect()
+                end
             end
         end, function(data, menu)
             menu.close()
             if parent then
-                ShowMenu(parent, '', {}, nil) -- Reopen parent menu
+                ShowMenu(parent, '', {}, nil)
             end
         end)
     end
@@ -238,7 +246,7 @@ RegisterNetEvent('vein-construction:client:displayActiveProjects', function(proj
     end
     
     ShowMenu('active_projects', 'Active Projects', options, 'project_menu')
-end)
+end
 
 -- View details of a specific project
 function ViewProjectDetails(project)

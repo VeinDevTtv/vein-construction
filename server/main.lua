@@ -485,3 +485,30 @@ Vein.GetRankByXP = function(xp)
     end
     return Config.Ranks[highestRankIndex]
 end
+
+-- Buy item event handler
+RegisterNetEvent('vein-construction:server:buyItem', function(item, price)
+    local src = source
+    local Player = QBCore.Functions.GetPlayer(src)
+    
+    if not Player then return end
+    
+    -- Check if player has enough money
+    if Player.PlayerData.money.cash >= price then
+        -- Remove money
+        Player.Functions.RemoveMoney('cash', price)
+        
+        -- Add item
+        local success = Player.Functions.AddItem(item, 1)
+        if success then
+            TriggerClientEvent('vein-construction:client:itemPurchased', src, true, 'Purchased ' .. item:gsub("_", " "))
+            TriggerClientEvent('inventory:client:ItemBox', src, QBCore.Shared.Items[item], 'add')
+        else
+            -- Refund if item couldn't be added
+            Player.Functions.AddMoney('cash', price)
+            TriggerClientEvent('vein-construction:client:itemPurchased', src, false, 'Cannot carry more of this item')
+        end
+    else
+        TriggerClientEvent('vein-construction:client:itemPurchased', src, false, 'Not enough cash')
+    end
+end)

@@ -225,149 +225,166 @@ function AddQBInteractions()
     })
 end
 
--- Construction shop function
+-- Function to open construction shop
 function OpenConstructionShop()
-    if Config.UseOxInventory then
-        exports.ox_inventory:openInventory('shop', { type = 'construction', id = 1 })
-    else
-        local shopItems = {
-            label = "Construction Shop",
-            slots = 30,
-            items = {}
+    local options = {
+        {
+            title = 'Safety Equipment',
+            description = 'Required safety gear for construction work',
+            icon = 'fas fa-hard-hat',
+            onSelect = function()
+                OpenSafetyEquipmentMenu()
+            end
+        },
+        {
+            title = 'Tools',
+            description = 'Construction tools and equipment',
+            icon = 'fas fa-tools',
+            onSelect = function()
+                OpenToolsMenu()
+            end
+        },
+        {
+            title = 'Materials',
+            description = 'Construction materials',
+            icon = 'fas fa-boxes',
+            onSelect = function()
+                OpenMaterialsMenu()
+            end
         }
-        
-        -- Add tools to shop
-        table.insert(shopItems.items, {
-            name = "hammer",
-            price = 250,
-            amount = 10,
-            info = {},
-            type = "item",
-            slot = 1,
-        })
-        
-        table.insert(shopItems.items, {
-            name = "drill",
-            price = 500,
-            amount = 10,
-            info = {},
-            type = "item",
-            slot = 2,
-        })
-        
-        table.insert(shopItems.items, {
-            name = "welding_torch",
-            price = 1000,
-            amount = 10,
-            info = {},
-            type = "item",
-            slot = 3,
-        })
-        
-        table.insert(shopItems.items, {
-            name = "shovel",
-            price = 350,
-            amount = 10,
-            info = {},
-            type = "item",
-            slot = 4,
-        })
-        
-        table.insert(shopItems.items, {
-            name = "paint_roller",
-            price = 200,
-            amount = 10,
-            info = {},
-            type = "item",
-            slot = 5,
-        })
-        
-        -- Add safety gear to shop
-        table.insert(shopItems.items, {
-            name = "construction_helmet",
-            price = 150,
-            amount = 10,
-            info = {},
-            type = "item",
-            slot = 6,
-        })
-        
-        table.insert(shopItems.items, {
-            name = "safety_vest",
-            price = 100,
-            amount = 10,
-            info = {},
-            type = "item",
-            slot = 7,
-        })
-        
-        table.insert(shopItems.items, {
-            name = "work_gloves",
-            price = 75,
-            amount = 10,
-            info = {},
-            type = "item",
-            slot = 8,
-        })
-        
-        table.insert(shopItems.items, {
-            name = "welding_mask",
-            price = 250,
-            amount = 10,
-            info = {},
-            type = "item",
-            slot = 9,
-        })
-        
-        table.insert(shopItems.items, {
-            name = "work_belt",
-            price = 300,
-            amount = 10,
-            info = {},
-            type = "item",
-            slot = 10,
-        })
-        
-        -- Add materials to shop
-        table.insert(shopItems.items, {
-            name = "nails",
-            price = 20,
-            amount = 50,
-            info = {},
-            type = "item",
-            slot = 11,
-        })
-        
-        table.insert(shopItems.items, {
-            name = "screws",
-            price = 25,
-            amount = 50,
-            info = {},
-            type = "item",
-            slot = 12,
-        })
-        
-        table.insert(shopItems.items, {
-            name = "metal_rods",
-            price = 75,
-            amount = 50,
-            info = {},
-            type = "item",
-            slot = 13,
-        })
-        
-        table.insert(shopItems.items, {
-            name = "asphalt_bucket",
-            price = 100,
-            amount = 50,
-            info = {},
-            type = "item",
-            slot = 14,
-        })
-        
-        TriggerServerEvent("inventory:server:OpenInventory", "shop", "construction", shopItems)
-    end
+    }
+    
+    ShowMenu('construction_shop', 'Construction Shop', options)
 end
+
+-- Function to open safety equipment menu
+function OpenSafetyEquipmentMenu()
+    local options = {
+        {
+            title = 'Construction Helmet',
+            description = 'Price: $50\nRequired for all construction work',
+            icon = 'fas fa-hard-hat',
+            onSelect = function()
+                TriggerServerEvent('vein-construction:server:buyItem', 'construction_helmet', 50)
+            end
+        },
+        {
+            title = 'Safety Vest',
+            description = 'Price: $30\nRequired for all construction work',
+            icon = 'fas fa-vest',
+            onSelect = function()
+                TriggerServerEvent('vein-construction:server:buyItem', 'safety_vest', 30)
+            end
+        },
+        {
+            title = 'Work Gloves',
+            description = 'Price: $20\nRequired for all construction work',
+            icon = 'fas fa-mitten',
+            onSelect = function()
+                TriggerServerEvent('vein-construction:server:buyItem', 'work_gloves', 20)
+            end
+        }
+    }
+    
+    ShowMenu('safety_equipment', 'Safety Equipment', options, 'construction_shop')
+end
+
+-- Function to open tools menu
+function OpenToolsMenu()
+    local options = {
+        {
+            title = 'Hammer',
+            description = 'Price: $100\nRequired for hammering tasks',
+            icon = 'fas fa-hammer',
+            onSelect = function()
+                TriggerServerEvent('vein-construction:server:buyItem', 'hammer', 100)
+            end
+        },
+        {
+            title = 'Power Drill',
+            description = 'Price: $200\nRequired for drilling tasks',
+            icon = 'fas fa-screwdriver',
+            onSelect = function()
+                TriggerServerEvent('vein-construction:server:buyItem', 'drill', 200)
+            end
+        },
+        {
+            title = 'Welding Torch',
+            description = 'Price: $300\nRequired for welding tasks',
+            icon = 'fas fa-fire',
+            onSelect = function()
+                TriggerServerEvent('vein-construction:server:buyItem', 'welding_torch', 300)
+            end
+        },
+        {
+            title = 'Shovel',
+            description = 'Price: $150\nRequired for roadwork tasks',
+            icon = 'fas fa-shovel',
+            onSelect = function()
+                TriggerServerEvent('vein-construction:server:buyItem', 'shovel', 150)
+            end
+        },
+        {
+            title = 'Paint Roller',
+            description = 'Price: $80\nRequired for roadwork tasks',
+            icon = 'fas fa-paint-roller',
+            onSelect = function()
+                TriggerServerEvent('vein-construction:server:buyItem', 'paint_roller', 80)
+            end
+        }
+    }
+    
+    ShowMenu('tools', 'Tools', options, 'construction_shop')
+end
+
+-- Function to open materials menu
+function OpenMaterialsMenu()
+    local options = {
+        {
+            title = 'Nails (Box)',
+            description = 'Price: $20\nRequired for hammering tasks',
+            icon = 'fas fa-thumbtack',
+            onSelect = function()
+                TriggerServerEvent('vein-construction:server:buyItem', 'nails', 20)
+            end
+        },
+        {
+            title = 'Screws (Box)',
+            description = 'Price: $25\nRequired for drilling tasks',
+            icon = 'fas fa-screwdriver',
+            onSelect = function()
+                TriggerServerEvent('vein-construction:server:buyItem', 'screws', 25)
+            end
+        },
+        {
+            title = 'Metal Rods (Bundle)',
+            description = 'Price: $50\nRequired for welding tasks',
+            icon = 'fas fa-grip-lines',
+            onSelect = function()
+                TriggerServerEvent('vein-construction:server:buyItem', 'metal_rods', 50)
+            end
+        },
+        {
+            title = 'Asphalt Bucket',
+            description = 'Price: $40\nRequired for roadwork tasks',
+            icon = 'fas fa-fill-drip',
+            onSelect = function()
+                TriggerServerEvent('vein-construction:server:buyItem', 'asphalt_bucket', 40)
+            end
+        }
+    }
+    
+    ShowMenu('materials', 'Materials', options, 'construction_shop')
+end
+
+-- Register server callback for buying items
+RegisterNetEvent('vein-construction:client:itemPurchased', function(success, message)
+    if success then
+        QBCore.Functions.Notify(message, 'success')
+    else
+        QBCore.Functions.Notify(message, 'error')
+    end
+end)
 
 -- QB Target Event Handlers (if not using ox_target)
 RegisterNetEvent('vein-construction:client:openJobMenu', function()
