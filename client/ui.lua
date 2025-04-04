@@ -619,38 +619,38 @@ RegisterCommand('testconstructionui', function()
             onSelect = function()
                 CreateSectionedMenu('test_sectioned', 'Sectioned Menu', {
                     {
-                        title: "Section 1",
-                        items: [
+                        title = "Section 1",
+                        items = {
                             {
-                                title: "Item 1",
-                                description: "This is item 1",
-                                icon: "fas fa-star",
-                                onSelect: function() {
-                                    ShowUINotification("Section 1", "You selected Item 1", "success");
-                                }
+                                title = "Item 1",
+                                description = "This is item 1",
+                                icon = "fas fa-star",
+                                onSelect = function()
+                                    ShowUINotification("Section 1", "You selected Item 1", "success")
+                                end
                             },
                             {
-                                title: "Item 2",
-                                description: "This is item 2",
-                                icon: "fas fa-star",
-                                onSelect: function() {
-                                    ShowUINotification("Section 1", "You selected Item 2", "success");
-                                }
+                                title = "Item 2",
+                                description = "This is item 2",
+                                icon = "fas fa-star",
+                                onSelect = function()
+                                    ShowUINotification("Section 1", "You selected Item 2", "success")
+                                end
                             }
-                        ]
+                        }
                     },
                     {
-                        title: "Section 2",
-                        items: [
+                        title = "Section 2",
+                        items = {
                             {
-                                title: "Item 3",
-                                description: "This is item 3",
-                                icon: "fas fa-circle",
-                                onSelect: function() {
-                                    ShowUINotification("Section 2", "You selected Item 3", "info");
-                                }
+                                title = "Item 3",
+                                description = "This is item 3",
+                                icon = "fas fa-circle",
+                                onSelect = function()
+                                    ShowUINotification("Section 2", "You selected Item 3", "info")
+                                end
                             }
-                        ]
+                        }
                     }
                 }, 'test_menu')
             end
