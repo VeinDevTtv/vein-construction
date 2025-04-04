@@ -23,69 +23,222 @@ local jobStatus = {
     }
 }
 
--- Declare local variables for ox_lib support
-local hasOxLib = false
-local libInitialized = false
--- Use direct reference to the global lib
+-- Declare local variables but disable ox_lib usage
+local hasOxLib = false -- Set to false to disable ox_lib
 local lib = nil
+local libInitialized = false
 
--- Check if ox_lib is available
-Citizen.CreateThread(function()
-    -- Wait a moment to ensure other resources are loaded
-    Citizen.Wait(1000)
+-- Define a simple active tasks tracking system
+local ActiveTasks = {}
+
+-- Register active task
+function RegisterActiveTask(id, options)
+    ActiveTasks[id] = options
+end
+
+-- Function to handle menu selection events
+RegisterNetEvent('vein-construction:client:menuSelect')
+AddEventHandler('vein-construction:client:menuSelect', function(data)
+    if not data or not data.id or not data.option then return end
     
-    -- Check if ox_lib is started
-    if GetResourceState('ox_lib') == 'started' then
-        hasOxLib = true
-        
-        -- Use proper FiveM exports syntax - this assigns directly to global lib
-        if not lib then
-            -- Try both methods of getting the export
-            lib = exports['ox_lib']
-            
-            -- Also check if it's been set globally
-            if not lib and _G.lib then
-                lib = _G.lib
-            end
-            
-            -- Check if lib is fully initialized
-            if lib and type(lib.registerContext) == 'function' then
-                print('ox_lib fully initialized in UI module')
-                libInitialized = true
-            else
-                print('WARNING: ox_lib export obtained but registerContext not available')
+    local menuId = data.id
+    local optionTitle = data.option
+    
+    -- Find the matching option and execute its onSelect function
+    if ActiveTasks[menuId] then
+        for _, option in ipairs(ActiveTasks[menuId]) do
+            if option.title == optionTitle and option.onSelect then
+                option.onSelect()
+                break
             end
         end
     end
-    
-    print('ox_lib detection status in UI module:')
-    print('  - Resource detected:', hasOxLib)
-    print('  - Lib export obtained:', lib ~= nil)
-    print('  - Functions available:', libInitialized)
-    
-    -- Run a test if lib is available
-    if hasOxLib and lib and libInitialized then
-        -- Schedule a delayed test to ensure everything is loaded
-        Citizen.SetTimeout(2000, function()
-            local testResult = TestOxLibMenu()
-            print('ox_lib menu test result:', testResult)
-        end)
-    end
 end)
 
-local debugMode = false -- Set to true for debugging
+-- Function to show a menu with options
+function ShowMenu(id, title, options, parent)
+    -- Initialize options as empty table if nil
+    options = options or {}
+    
+    print('ShowMenu called:', id, title, 'options count:', #options)
+    
+    -- Make sure we release any existing UI control first
+    SetNuiFocus(false, false)
+    
+    -- Create QBCore menu
+    local qbMenu = {}
+    
+    -- Add header
+    table.insert(qbMenu, {
+        header = title,
+        isMenuHeader = true
+    })
+    
+    -- Add back button if parent is provided
+    if parent then
+        table.insert(qbMenu, {
+            header = "← Go Back",
+            txt = "Return to previous menu",
+            params = {
+                event = "vein-construction:client:menuSelect",
+                args = {
+                    id = parent,
+                    option = "back",
+                    action = "back"
+                }
+            }
+        })
+    end
+    
+    -- Add menu options
+    for _, option in ipairs(options) do
+        local menuOption = {
+            header = option.title or "Option",
+            txt = option.description or "",
+            icon = option.icon,
+            params = {}
+        }
+        
+        -- Add select function if provided
+        if option.onSelect then
+            menuOption.params = {
+                event = "vein-construction:client:menuSelect",
+                args = {
+                    id = id,
+                    option = option.title,
+                    action = "select"
+                }
+            }
+        end
+        
+        table.insert(qbMenu, menuOption)
+    end
+    
+    -- Show QBCore menu
+    exports['qb-menu']:openMenu(qbMenu)
+    
+    -- Store active menu options for selection callback
+    RegisterActiveTask(id, options)
+    
+    return true
+end
 
--- Debug logging function
-local function debugLog(...)
-    if debugMode then
-        print('[vein-construction UI]', ...)
+-- Function to close menu
+function CloseMenu()
+    exports['qb-menu']:closeMenu()
+end
+
+-- Function to show a notification
+function SendNotification(title, message, type, duration)
+    if type(title) == 'string' and type(message) == 'string' then
+        -- Title and message provided
+        QBCore.Functions.Notify({
+            text = message,
+            caption = title,
+            type = type or 'primary',
+            duration = duration or 5000
+        })
+    else
+        -- Only message provided as first parameter
+        QBCore.Functions.Notify(title, message or 'primary', duration or 5000)
     end
 end
 
--- Function to send data to the NUI
-function SendUIMessage(data)
-    SendNUIMessage(data)
+-- Function to show an alert
+function ShowAlert(title, message, type)
+    QBCore.Functions.Notify(message, type or 'primary', 7500)
 end
+
+-- Function to show a progress bar
+function ShowProgressBar(label, duration, animation, canCancel, onComplete, onCancel)
+    animation = animation or {}
+    
+    -- Start animation if provided
+    if animation.dict and animation.clip then
+        -- Request animation dictionary
+        RequestAnimDict(animation.dict)
+        while not HasAnimDictLoaded(animation.dict) do
+            Wait(10)
+        end
+        
+        -- Play animation
+        TaskPlayAnim(PlayerPedId(), animation.dict, animation.clip, 8.0, -8.0, -1, 49, 0, false, false, false)
+    end
+    
+    -- Show progress bar
+    QBCore.Functions.Progressbar("construction_task", label, duration, false, canCancel, {
+        disableMovement = animation.disableMovement or false,
+        disableCarMovement = animation.disableCarMovement or false,
+        disableMouse = animation.disableMouse or false,
+        disableCombat = animation.disableCombat or false,
+    }, {}, {}, function() -- Complete
+        if animation.dict and animation.clip then
+            StopAnimTask(PlayerPedId(), animation.dict, animation.clip, 1.0)
+        end
+        if onComplete then
+            onComplete()
+        end
+        return true
+    end, function() -- Cancel
+        if animation.dict and animation.clip then
+            StopAnimTask(PlayerPedId(), animation.dict, animation.clip, 1.0)
+        end
+        if onCancel then
+            onCancel()
+        end
+        return false
+    end)
+    
+    -- This is not ideal, but QBCore progressbar is not synchronous
+    Wait(duration + 500)
+    return true
+end
+
+-- Register a command to test the UI
+RegisterCommand('testconstructionui', function()
+    -- Create a test menu
+    local testOptions = {
+        {
+            title = "Test Option 1",
+            description = "This is a test option",
+            icon = "fas fa-check",
+            onSelect = function()
+                SendNotification("Test", "You selected option 1", "success")
+            end
+        },
+        {
+            title = "Test Option 2",
+            description = "Another test option",
+            icon = "fas fa-times",
+            onSelect = function()
+                SendNotification("Test", "You selected option 2", "error")
+            end
+        },
+        {
+            title = "Test Progress",
+            description = "Test progress bar",
+            icon = "fas fa-spinner",
+            onSelect = function()
+                ShowProgressBar("Testing Progress", 5000, {
+                    dict = "amb@world_human_hammering@male@base",
+                    clip = "base"
+                }, true, function()
+                    SendNotification("Test", "Progress completed", "success")
+                end)
+            end
+        }
+    }
+    
+    ShowMenu("test_menu", "Test Construction UI", testOptions)
+    
+    print("QBCore menu test started")
+end, false)
+
+-- Print a message when the UI is loaded
+Citizen.CreateThread(function()
+    Citizen.Wait(2000)
+    print("Vein Construction UI loaded successfully. Use /testconstructionui to test it.")
+end)
 
 -- Function to show a menu
 function ShowUIMenu(id, title, options, parent, footerInfo)
@@ -135,137 +288,6 @@ function ShowUIMenu(id, title, options, parent, footerInfo)
     
     -- Display cursor
     SetNuiFocus(true, true)
-end
-
--- Function to safely use ox_lib
-function SafelyUseOxLib(action, param)
-    if not action then
-        print('ERROR: No action provided to SafelyUseOxLib')
-        return nil
-    end
-    
-    -- Ensure param is a table if required
-    if action == 'registerContext' then
-        if not param then
-            print('ERROR: registerContext requires a parameter table')
-            return nil
-        elseif type(param) ~= 'table' then
-            print('ERROR: registerContext parameter must be a table, got', type(param))
-            return nil
-        elseif type(param.options) ~= 'table' then
-            print('ERROR: registerContext options must be a table, got', type(param.options))
-            return nil
-        elseif #param.options == 0 then
-            print('WARNING: registerContext called with empty options array')
-            -- Don't return nil here, allow empty menus
-        end
-        
-        -- Ensure options are properly formatted for ox_lib
-        for i, option in ipairs(param.options) do
-            -- Always ensure these fields exist
-            option.title = option.title or 'Option ' .. i
-            option.description = option.description or ''
-            
-            -- If onSelect is a function, wrap it properly for ox_lib
-            if type(option.onSelect) == 'function' then
-                local originalOnSelect = option.onSelect
-                option.onSelect = function(args)
-                    -- Execute the original function
-                    originalOnSelect()
-                end
-            end
-        end
-    end
-    
-    if hasOxLib and lib and libInitialized then
-        if action == 'hideContext' and type(lib.hideContext) == "function" then
-            return lib.hideContext()
-        elseif action == 'registerContext' and type(lib.registerContext) == "function" then
-            -- Dump the full context for debugging
-            print('REGISTERING CONTEXT:')
-            for k, v in pairs(param) do
-                if k ~= 'options' then
-                    print(k, '=', v)
-                else
-                    print('options = [' .. #v .. ' items]')
-                    -- Print first few options
-                    for i = 1, math.min(3, #v) do
-                        print('  Option ' .. i .. ':', v[i].title)
-                    end
-                end
-            end
-            
-            -- Try to register context
-            local success, result = pcall(function()
-                return lib.registerContext(param)
-            end)
-            
-            if not success then
-                print('ERROR in registerContext:', result)
-                return false
-            end
-            
-            return result
-        elseif action == 'showContext' and type(lib.showContext) == "function" then
-            print('SHOWING CONTEXT:', param)
-            
-            -- Try to show context
-            local success, result = pcall(function()
-                return lib.showContext(param)
-            end)
-            
-            if not success then
-                print('ERROR in showContext:', result)
-                return false
-            end
-            
-            return result
-        elseif action == 'alertDialog' and type(lib.alertDialog) == "function" then
-            return lib.alertDialog(param)
-        elseif action == 'progressBar' and type(lib.progressBar) == "function" then
-            return lib.progressBar(param)
-        elseif action == 'notify' and type(lib.notify) == "function" then
-            return lib.notify(param)
-        elseif action == 'showTextUI' and type(lib.showTextUI) == "function" then
-            return lib.showTextUI(param)
-        elseif action == 'hideTextUI' and type(lib.hideTextUI) == "function" then
-            return lib.hideTextUI()
-        else
-            print('Unknown action or method not available:', action)
-            return nil
-        end
-    else
-        print('ox_lib not available for action:', action)
-        print('hasOxLib:', hasOxLib)
-        print('lib exists:', lib ~= nil)
-        print('libInitialized:', libInitialized)
-        return nil
-    end
-end
-
--- Function to close any open menus
-function CloseMenu()
-    menuOpen = false
-    SetNuiFocus(false, false)
-    
-    debugLog('CloseMenu called')
-    
-    if hasOxLib and lib and libInitialized then
-        SafelyUseOxLib('hideContext')
-    else
-        TriggerEvent('qb-menu:client:closeMenu')
-    end
-end
-
--- Function to show a notification
-function ShowUINotification(title, message, type, icon)
-    SendUIMessage({
-        action = 'showNotification',
-        title = title,
-        message = message,
-        type = type or 'info',
-        icon = icon
-    })
 end
 
 -- Function to update job status display
@@ -345,254 +367,15 @@ function UpdateToolDurability(toolName, durability, maxDurability)
     UpdateJobStatus()
 end
 
--- NUI Callbacks
-RegisterNUICallback('closeMenu', function(data, cb)
-    CloseMenu()
-    cb('ok')
-end)
-
-RegisterNUICallback('menuSelect', function(data, cb)
-    local menuId = data.menuId
-    local optionIndex = data.optionIndex
-    
-    -- Call the stored callback
-    local callbackId = menuId .. '_' .. optionIndex
-    if menuCallbacks[callbackId] then
-        menuCallbacks[callbackId]()
-    end
-    
-    cb('ok')
-end)
-
-RegisterNUICallback('goBack', function(data, cb)
-    -- If there's a parent menu specified, reopen it
-    if data.menuId then
-        TriggerEvent('vein-construction:client:reopenMenu', data.menuId)
-    end
-    
-    cb('ok')
-end)
-
-RegisterNUICallback('buyItem', function(data, cb)
-    -- Trigger server event to buy the item
-    TriggerServerEvent('vein-construction:server:buyItem', data.item, data.type)
-    cb('ok')
-end)
-
-RegisterNUICallback('startTask', function(data, cb)
-    -- Trigger task start event
-    TriggerEvent('vein-construction:client:startTask', data.taskId)
-    cb('ok')
-end)
-
--- Event to reopen a parent menu
-RegisterNetEvent('vein-construction:client:reopenMenu', function(menuId)
-    -- Look for this menu in the menu history and reopen it
-    if menuId == 'construction_job_menu' then
-        OpenJobMenu()
-    elseif menuId == 'job_management' then
-        OpenJobManagementMenu()
-    elseif menuId == 'job_info' then
-        ShowJobInformation()
-    elseif menuId == 'task_info' then
-        ShowTaskInformation()
-    elseif menuId == 'equipment_info' then
-        ShowEquipmentInformation()
-    elseif menuId == 'project_menu' then
-        OpenProjectMenu()
-    elseif menuId == 'active_projects' then
-        ViewActiveProjects()
-    elseif menuId == 'safety_equipment' then
-        OpenSafetyEquipmentMenu()
-    elseif menuId == 'tools_menu' then
-        OpenToolsMenu()
-    elseif menuId == 'materials_menu' then
-        OpenMaterialsMenu()
-    end
-end)
-
--- Function to validate and normalize a menu option structure
-function ValidateMenuOption(option)
-    if type(option) ~= 'table' then
-        print('WARNING: Invalid menu option (not a table):', type(option))
-        return {
-            title = 'Invalid Option',
-            description = 'Option format error'
-        }
-    end
-    
-    -- Create a normalized option
-    local validOption = {
-        title = option.title or 'No Title',
-    }
-    
-    -- Optional fields
-    if option.description then validOption.description = option.description end
-    if option.icon then validOption.icon = option.icon end
-    
-    -- Only add onSelect if it's a function
-    if type(option.onSelect) == 'function' then
-        validOption.onSelect = option.onSelect
-    end
-    
-    return validOption
-end
-
--- Safely register a context menu with better error handling
-function SafeRegisterContext(menuData)
-    if not hasOxLib or not lib then
-        print('ERROR: Cannot register context - ox_lib not available')
-        return false
-    end
-    
-    if type(menuData) ~= 'table' then
-        print('ERROR: menuData must be a table, got', type(menuData))
-        return false
-    end
-    
-    if not menuData.id then
-        print('ERROR: menuData.id is required')
-        return false
-    end
-    
-    if not menuData.title then
-        print('ERROR: menuData.title is required')
-        return false
-    end
-    
-    -- Ensure options exists and is a table
-    if menuData.options == nil then
-        print('WARNING: menuData.options is nil, creating empty table')
-        menuData.options = {}
-    elseif type(menuData.options) ~= 'table' then
-        print('ERROR: menuData.options must be a table, got', type(menuData.options))
-        menuData.options = {}
-    end
-    
-    -- Make sure there's at least one option
-    if #menuData.options == 0 then
-        print('WARNING: Adding a dummy option to empty menu')
-        table.insert(menuData.options, {
-            title = 'No options available',
-            description = 'Menu has no options',
-        })
-    end
-    
-    -- Validate each option to ensure it's properly structured
-    for i, option in ipairs(menuData.options) do
-        if type(option) ~= 'table' then
-            print('WARNING: Option at index', i, 'is not a table, replacing with default option')
-            menuData.options[i] = {title = 'Invalid Option'}
-        elseif not option.title then
-            print('WARNING: Option at index', i, 'has no title, adding default title')
-            option.title = 'Option ' .. i
-        end
-        
-        -- Remove onSelect if it's not a function (ox_lib is strict about this)
-        if option.onSelect ~= nil and type(option.onSelect) ~= 'function' then
-            print('WARNING: Option "' .. option.title .. '" has invalid onSelect (not a function), removing')
-            option.onSelect = nil
-        end
-    end
-    
-    -- Print menu data for debugging
-    print('Registering menu:', menuData.id)
-    print('Title:', menuData.title)
-    print('Options count:', #menuData.options)
-    if menuData.menu then
-        print('Parent menu:', menuData.menu)
-    end
-    
-    -- Try to register the context
-    local success, result = pcall(function()
-        return lib.registerContext(menuData)
-    end)
-    
-    if not success then
-        print('ERROR: Failed to register context menu:', result)
-        
-        -- Debug output the menu structure for troubleshooting
-        print('Menu structure that failed:')
-        for key, value in pairs(menuData) do
-            if key ~= 'options' then
-                print('  ' .. key .. ':', value)
-            else
-                print('  options: [table with ' .. #value .. ' items]')
-                -- Print first option as example
-                if #value > 0 then
-                    print('    First option:')
-                    for k, v in pairs(value[1]) do
-                        if type(v) ~= 'function' then
-                            print('      ' .. k .. ':', v)
-                        else
-                            print('      ' .. k .. ': [function]')
-                        end
-                    end
-                end
-            end
-        end
-        
-        -- Try a simplified version as fallback
-        print('Trying a simplified version...')
-        local simpleMenu = {
-            id = menuData.id,
-            title = menuData.title,
-            options = {{
-                title = "View " .. menuData.title,
-                description = "Menu simplified due to error"
-            }}
-        }
-        
-        if menuData.menu then 
-            simpleMenu.menu = menuData.menu
-        end
-        
-        success, result = pcall(function()
-            return lib.registerContext(simpleMenu)
-        end)
-        
-        if not success then
-            print('Simplified menu also failed:', result)
-            return false
-        else
-            print('Simplified menu registered successfully as fallback')
-            return true
-        end
-    end
-    
-    return true
-end
-
--- Safely show a context menu with better error handling
-function SafeShowContext(id)
-    if not hasOxLib or not lib or not libInitialized then
-        print('ERROR: Cannot show context - ox_lib not available')
-        return false
-    end
-    
-    if not id then
-        print('ERROR: Menu ID is required')
-        return false
-    end
-    
-    print('Showing menu:', id)
-    
-    -- Try to show the context
-    local success, result = pcall(function()
-        return lib.showContext(id)
-    end)
-    
-    if not success then
-        print('ERROR: Failed to show context menu:', result)
-        return false
-    end
-    
-    if result == false then
-        print('WARNING: lib.showContext returned false')
-        return false
-    end
-    
-    return true
+-- Function to show a notification
+function ShowUINotification(title, message, type, icon)
+    SendUIMessage({
+        action = 'showNotification',
+        title = title,
+        message = message,
+        type = type or 'info',
+        icon = icon
+    })
 end
 
 -- Function to show a menu with options
@@ -605,70 +388,62 @@ function ShowMenu(id, title, options, parent)
     -- Make sure we release any existing UI control first
     SetNuiFocus(false, false)
     
-    -- If ox_lib is available, try to use it
-    if hasOxLib and lib then
-        print('Attempting to use ox_lib for menu')
-        
-        -- Create a simplified menu structure compatible with ox_lib
-        local menuData = {
-            id = id,
-            title = title,
-            options = {},
-        }
-        
-        -- Add parent menu if provided
-        if parent then
-            menuData.menu = parent
-        end
-        
-        -- Process options to ensure format compatibility
-        if type(options) == 'table' then
-            for i, option in ipairs(options) do
-                -- Validate and normalize the option
-                local cleanOption = ValidateMenuOption(option)
-                table.insert(menuData.options, cleanOption)
-            end
-        end
-        
-        -- Make sure there's at least one option
-        if #menuData.options == 0 then
-            print('WARNING: No valid options, adding a placeholder')
-            table.insert(menuData.options, {
-                title = 'No Options Available',
-                description = 'This menu has no available options'
-            })
-        end
-        
-        -- Try to register the context with pcall for safety
-        local success, result = pcall(function()
-            if lib.registerContext then
-                lib.registerContext(menuData)
-                return true
-            end
-            return false
-        end)
-        
-        -- If registration succeeded, try to show it
-        if success and result then
-            local showSuccess = pcall(function()
-                if lib.showContext then
-                    lib.showContext(id)
-                end
-            end)
-            
-            if showSuccess then
-                print('Menu successfully shown with ox_lib')
-                -- Store active menu options for selection callback
-                RegisterActiveTask(id, options)
-                return true
-            end
-        end
-        
-        print('ox_lib menu failed, falling back to QB menu')
+    -- Create QBCore menu
+    local qbMenu = {}
+    
+    -- Add header
+    table.insert(qbMenu, {
+        header = title,
+        isMenuHeader = true
+    })
+    
+    -- Add back button if parent is provided
+    if parent then
+        table.insert(qbMenu, {
+            header = "← Go Back",
+            txt = "Return to previous menu",
+            params = {
+                event = "vein-construction:client:menuSelect",
+                args = {
+                    id = parent,
+                    option = "back",
+                    action = "back"
+                }
+            }
+        })
     end
     
-    -- Fallback to QBCore menu
-    return CreateQBMenu(id, title, options, parent)
+    -- Add menu options
+    for _, option in ipairs(options) do
+        local menuOption = {
+            header = option.title or "Option",
+            txt = option.description or "",
+            icon = option.icon,
+            params = {}
+        }
+        
+        -- Add select function if provided
+        if option.onSelect then
+            menuOption.params = {
+                event = "vein-construction:client:menuSelect",
+                args = {
+                    id = id,
+                    option = option.title,
+                    action = "select"
+                }
+            }
+        end
+        
+        table.insert(qbMenu, menuOption)
+    end
+    
+    -- Show QBCore menu
+    exports['qb-menu']:openMenu(qbMenu)
+    
+    -- Store active menu options for selection callback
+    RegisterActiveTask(id, options)
+    
+    return true
 end
 
 -- Function to handle menu selection for QBCore fallback
@@ -1391,9 +1166,11 @@ function CreateQBMenu(id, title, options, parent)
             header = "← Go Back",
             txt = "Return to previous menu",
             params = {
-                event = "qb-menu:client:openMenu",
+                event = "vein-construction:client:menuSelect",
                 args = {
-                    menuType = parent
+                    id = parent,
+                    option = "back",
+                    action = "back"
                 }
             }
         })
@@ -1402,7 +1179,7 @@ function CreateQBMenu(id, title, options, parent)
     -- Add menu options
     for _, option in ipairs(options) do
         local menuOption = {
-            header = option.title,
+            header = option.title or "Option",
             txt = option.description or "",
             icon = option.icon,
             params = {}

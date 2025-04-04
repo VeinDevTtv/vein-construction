@@ -48,7 +48,6 @@ dependency {
     'PolyZone'
 }
 
--- List ox_lib as an optional dependency to help with loading order
 lua54 'yes'
 
 escrow_ignore {

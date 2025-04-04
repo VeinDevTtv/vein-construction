@@ -3,66 +3,10 @@ local QBCore = exports['qb-core']:GetCoreObject()
 local PlayerData = {}
 local isOnDuty = false
 
--- Check if ox_lib is available
-local hasOxLib = false
-local lib = nil
-local libInitialized = false
-
 -- Initialize player data
 RegisterNetEvent('QBCore:Client:OnPlayerLoaded', function()
     PlayerData = QBCore.Functions.GetPlayerData()
 end)
-
--- Function to safely use ox_lib
-function SafelyUseOxLib(action, param)
-    if not action then
-        print('ERROR: No action provided to SafelyUseOxLib')
-        return nil
-    end
-    
-    -- Ensure param is a table if required for certain actions
-    if action == 'registerContext' and not param then
-        print('ERROR: registerContext requires a parameter table')
-        return nil
-    elseif action == 'registerContext' and type(param) ~= 'table' then
-        print('ERROR: registerContext parameter must be a table, got', type(param))
-        return nil
-    elseif action == 'registerContext' and type(param.options) ~= 'table' then
-        print('ERROR: registerContext options must be a table, got', type(param.options))
-        return nil
-    end
-    
-    if hasOxLib and lib and libInitialized then
-        if action == 'hideContext' and type(lib.hideContext) == "function" then
-            return lib.hideContext()
-        elseif action == 'registerContext' and type(lib.registerContext) == "function" then
-            -- Final safety check for options table
-            if not param.options then param.options = {} end
-            return lib.registerContext(param)
-        elseif action == 'showContext' and type(lib.showContext) == "function" then
-            return lib.showContext(param)
-        elseif action == 'alertDialog' and type(lib.alertDialog) == "function" then
-            return lib.alertDialog(param)
-        elseif action == 'progressBar' and type(lib.progressBar) == "function" then
-            return lib.progressBar(param)
-        elseif action == 'notify' and type(lib.notify) == "function" then
-            return lib.notify(param)
-        elseif action == 'showTextUI' and type(lib.showTextUI) == "function" then
-            return lib.showTextUI(param)
-        elseif action == 'hideTextUI' and type(lib.hideTextUI) == "function" then
-            return lib.hideTextUI()
-        else
-            print('Unknown action or method not available:', action)
-            return nil
-        end
-    else
-        print('ox_lib not available for action:', action)
-        print('hasOxLib:', hasOxLib)
-        print('lib exists:', lib ~= nil)
-        print('libInitialized:', libInitialized)
-        return nil
-    end
-end
 
 RegisterNetEvent('QBCore:Client:OnJobUpdate', function(JobInfo)
     PlayerData.job = JobInfo
@@ -71,38 +15,6 @@ end)
 -- NPC Variables
 local jobNPC = nil
 local shopNPC = nil
-
--- Check for ox_lib on resource start
-Citizen.CreateThread(function()
-    -- Wait a moment to ensure other resources are loaded
-    Citizen.Wait(1000)
-    
-    -- Check if ox_lib is started
-    if GetResourceState('ox_lib') == 'started' then
-        hasOxLib = true
-        
-        -- Try to get the export
-        lib = exports['ox_lib']
-        
-        -- Also check if it's been set globally
-        if not lib and _G.lib then
-            lib = _G.lib
-        end
-        
-        -- Check if lib is fully initialized
-        if lib and type(lib.registerContext) == 'function' then
-            print('ox_lib fully initialized in NPC module')
-            libInitialized = true
-        else
-            print('WARNING: ox_lib export obtained but registerContext not available')
-        end
-    end
-    
-    print('ox_lib detection status in NPC module:')
-    print('  - Resource detected:', hasOxLib)
-    print('  - Lib export obtained:', lib ~= nil)
-    print('  - Functions available:', libInitialized)
-end)
 
 -- Create job NPC and add target interactions
 function CreateJobNPC()
@@ -318,11 +230,6 @@ end
 function ReleaseUIControl()
     SetNuiFocus(false, false)
     TriggerEvent('qb-menu:client:closeMenu')
-    
-    -- Check both hasOxLib and if lib is defined
-    if hasOxLib and lib and libInitialized then
-        SafelyUseOxLib('hideContext')
-    end
 end
 
 -- Function to open the construction shop

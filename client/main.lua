@@ -1,11 +1,6 @@
 -- Initialize QBCore
 local QBCore = exports['qb-core']:GetCoreObject()
 
--- Local variables for lib access
-local hasOxLib = false
-local lib = nil
-local libInitialized = false
-
 -- Import the ShowMenu function from client/ui.lua
 local ShowMenu = function(id, title, options, parent)
     -- This function will be replaced by the global function in ui.lua
@@ -48,38 +43,6 @@ local currentSite = nil
 local activeBlips = {}
 local safetyCheckTimer = nil
 local toolDurabilities = {}
-
--- Check if ox_lib is available with proper initialization
-Citizen.CreateThread(function()
-    -- Wait a moment to ensure other resources are loaded
-    Citizen.Wait(1000)
-    
-    -- Check if ox_lib is started
-    if GetResourceState('ox_lib') == 'started' then
-        hasOxLib = true
-        
-        -- Try to get the export
-        lib = exports['ox_lib']
-        
-        -- Also check if it's been set globally
-        if not lib and _G.lib then
-            lib = _G.lib
-        end
-        
-        -- Check if lib is fully initialized
-        if lib and type(lib.registerContext) == 'function' then
-            print('ox_lib fully initialized in main module')
-            libInitialized = true
-        else
-            print('WARNING: ox_lib export obtained but registerContext not available')
-        end
-    end
-    
-    print('ox_lib detection status in main module:')
-    print('  - Resource detected:', hasOxLib)
-    print('  - Lib export obtained:', lib ~= nil)
-    print('  - Functions available:', libInitialized)
-end)
 
 -- Initialize the script
 Citizen.CreateThread(function()
@@ -494,33 +457,7 @@ function OpenJobManagementMenu()
         description = "Leave the construction job",
         icon = "fas fa-sign-out-alt",
         onSelect = function()
-            -- Create confirmation dialog with QBCore if ox_lib is not available
-            if hasOxLib and lib and libInitialized then
-                local confirm = SafelyUseOxLib('alertDialog', {
-                    header = 'Quit Construction Job',
-                    content = 'Are you sure you want to quit? You will lose your current rank and experience.',
-                    centered = true,
-                    cancel = true
-                })
-                if confirm == 'confirm' then
-                    TriggerServerEvent('vein-construction:server:quitJob')
-                end
-            else
-                -- Fallback to QBCore dialog
-                QBCore.Functions.TriggerCallback('QBCore:Dialog:CloseDialog', {
-                    header = "Quit Construction Job",
-                    rows = {
-                        {
-                            id = 0,
-                            txt = "Are you sure you want to quit? You will lose your current rank and experience."
-                        }
-                    }
-                }, function(result)
-                    if result then
-                        TriggerServerEvent('vein-construction:server:quitJob')
-                    end
-                end)
-            end
+            OpenQuitJobDialog()
         end
     })
     
@@ -878,29 +815,48 @@ function RepairTools()
     CreateSectionedMenu('repair_tools', 'Repair Tools', sections, 'tool_durability')
 end
 
--- Quit job
-function QuitJob()
+-- Function to show quit confirmation dialog
+function OpenQuitJobDialog()
+    QBCore.Functions.Notify({
+        text = "Are you sure you want to quit your construction job? You will lose your current rank and experience.",
+        caption = "Confirm Job Termination",
+        type = "warning",
+        duration = 10000
+    })
+    
+    -- Create a simple dialog using qb-menu
     local options = {
         {
-            title = 'Confirm Resignation',
-            description = 'Are you sure you want to quit?',
-            icon = 'fas fa-check',
-            onSelect = function()
-                TriggerServerEvent('vein-construction:server:quitJob')
-                ResetJobStatus()
-            end
+            header = "Confirm Job Termination",
+            isMenuHeader = true
         },
         {
-            title = 'Cancel',
-            icon = 'fas fa-times',
-            onSelect = function()
-                ShowMenu('job_management', 'Job Management', {}, nil)
-            end
+            header = "Yes, I want to quit",
+            txt = "You will lose your current rank and experience",
+            params = {
+                event = "vein-construction:client:confirmQuitJob",
+                args = {}
+            }
+        },
+        {
+            header = "No, I'll stay",
+            txt = "Continue working in construction",
+            params = {
+                event = "qb-menu:client:closeMenu",
+                args = {}
+            }
         }
     }
     
-    ShowMenu('quit_job', 'Quit Job', options, 'job_management')
+    exports['qb-menu']:openMenu(options)
 end
+
+-- Register event for confirming job quit
+RegisterNetEvent('vein-construction:client:confirmQuitJob')
+AddEventHandler('vein-construction:client:confirmQuitJob', function()
+    -- Trigger server event to quit job
+    TriggerServerEvent('vein-construction:server:quitJob')
+end)
 
 -- Select a task at the current site
 function SelectTask()
