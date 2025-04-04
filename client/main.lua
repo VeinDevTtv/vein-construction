@@ -1026,4 +1026,81 @@ RegisterNetEvent('onClientResourceStart', function(resourceName)
     if PlayerData.job and PlayerData.job.name == 'construction' then
         isOnDuty = PlayerData.job.onduty
     end
-end) 
+end)
+
+-- Setup job blips on the map
+function SetupJobBlips()
+    print('Setting up job blips...')
+    
+    -- Remove existing blips first
+    local existingBlips = GetAllBlips()
+    for _, blipId in pairs(existingBlips) do
+        if DoesBlipExist(blipId) then
+            local blipSprite = GetBlipSprite(blipId)
+            -- Only remove our specific blips (construction related)
+            if blipSprite == 477 or blipSprite == 566 or blipSprite == 478 then
+                RemoveBlip(blipId)
+            end
+        end
+    end
+    
+    -- Job HQ Blip
+    if Config.JobNPC and Config.JobNPC.coords then
+        local jobBlip = AddBlipForCoord(Config.JobNPC.coords.x, Config.JobNPC.coords.y, Config.JobNPC.coords.z)
+        SetBlipSprite(jobBlip, 477) -- Construction blip sprite
+        SetBlipDisplay(jobBlip, 4)
+        SetBlipScale(jobBlip, 0.8)
+        SetBlipAsShortRange(jobBlip, true)
+        SetBlipColour(jobBlip, 47) -- Orange color
+        BeginTextCommandSetBlipName("STRING")
+        AddTextComponentSubstringPlayerName("Construction HQ")
+        EndTextCommandSetBlipName(jobBlip)
+    else
+        print('Job NPC coordinates not found in config')
+    end
+    
+    -- Shop Blip
+    if Config.ShopNPC and Config.ShopNPC.coords then
+        local shopBlip = AddBlipForCoord(Config.ShopNPC.coords.x, Config.ShopNPC.coords.y, Config.ShopNPC.coords.z)
+        SetBlipSprite(shopBlip, 566) -- Shop blip sprite
+        SetBlipDisplay(shopBlip, 4)
+        SetBlipScale(shopBlip, 0.7)
+        SetBlipAsShortRange(shopBlip, true)
+        SetBlipColour(shopBlip, 47) -- Orange color
+        BeginTextCommandSetBlipName("STRING")
+        AddTextComponentSubstringPlayerName("Construction Shop")
+        EndTextCommandSetBlipName(shopBlip)
+    else
+        print('Shop NPC coordinates not found in config')
+    end
+    
+    -- Setup construction sites blips if on duty
+    if isOnDuty and Config.ConstructionSites then
+        for _, site in pairs(Config.ConstructionSites) do
+            if site.coords then
+                local siteBlip = AddBlipForCoord(site.coords.x, site.coords.y, site.coords.z)
+                SetBlipSprite(siteBlip, 478) -- Construction site sprite
+                SetBlipDisplay(siteBlip, 4)
+                SetBlipScale(siteBlip, 0.7)
+                SetBlipAsShortRange(siteBlip, true)
+                SetBlipColour(siteBlip, 47) -- Orange color
+                BeginTextCommandSetBlipName("STRING")
+                AddTextComponentSubstringPlayerName(site.name)
+                EndTextCommandSetBlipName(siteBlip)
+            end
+        end
+    end
+    
+    print('Job blips setup complete')
+end
+
+-- Helper function to get all blips
+function GetAllBlips()
+    local blips = {}
+    for i = 1, 750 do -- Arbitrary upper limit
+        if DoesBlipExist(i) then
+            table.insert(blips, i)
+        end
+    end
+    return blips
+end 

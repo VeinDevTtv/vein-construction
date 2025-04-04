@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Construction Item Placeholder Generator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .item-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .item {
+            background: white;
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .item img {
+            width: 100%;
+            height: auto;
+            display: block;
+            margin-bottom: 10px;
+        }
+        .item-name {
+            font-size: 12px;
+            margin-bottom: 5px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            width: 100%;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .instructions {
+            background-color: #fffde7;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #ffc107;
+        }
+    </style>
+</head>
+<body>
+    <h1>Construction Item Placeholder Generator</h1>
+    
+    <div class="instructions">
+        <p><strong>Instructions:</strong></p>
+        <ol>
+            <li>Click "Download" under each item to save the placeholder image</li>
+            <li>Save all images to your <code>vein-construction/html/images/</code> directory</li>
+            <li>Make sure the filenames match exactly what's shown (e.g., <code>construction_helmet.png</code>)</li>
+        </ol>
+    </div>
+    
+    <div class="item-grid" id="item-grid">
+        <!-- Items will be dynamically inserted here -->
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const items = [
+                'construction_helmet',
+                'safety_vest',
+                'work_gloves',
+                'safety_boots',
+                'hammer',
+                'screwdriver_set',
+                'power_drill',
+                'measuring_tape',
+                'wrench_set',
+                'cement_bag',
+                'lumber',
+                'steel_beam',
+                'brick_pack',
+                'wire_bundle'
+            ];
+            
+            const itemGrid = document.getElementById('item-grid');
+            
+            items.forEach(itemName => {
+                // Create item container
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'item';
+                
+                // Create canvas for the item
+                const canvas = document.createElement('canvas');
+                canvas.width = 128;
+                canvas.height = 128;
+                const ctx = canvas.getContext('2d');
+                
+                // Clear canvas
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Set background
+                ctx.fillStyle = '#2d3a4a';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw border
+                ctx.strokeStyle = '#f0a30a';
+                ctx.lineWidth = 4;
+                ctx.strokeRect(4, 4, canvas.width - 8, canvas.height - 8);
+                
+                // Draw item name text
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 14px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                // Format text with line breaks if needed
+                const displayName = itemName.replace(/_/g, ' ');
+                const words = displayName.split(' ');
+                
+                if (words.length > 1) {
+                    ctx.fillText(words[0], canvas.width / 2, canvas.height / 2 - 10);
+                    ctx.fillText(words.slice(1).join(' '), canvas.width / 2, canvas.height / 2 + 10);
+                } else {
+                    ctx.fillText(displayName, canvas.width / 2, canvas.height / 2);
+                }
+                
+                // Convert to data URL
+                const dataURL = canvas.toDataURL('image/png');
+                
+                // Create image element
+                const img = document.createElement('img');
+                img.src = dataURL;
+                img.alt = itemName;
+                
+                // Create name display
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'item-name';
+                nameDiv.textContent = itemName + '.png';
+                
+                // Create download button
+                const downloadBtn = document.createElement('button');
+                downloadBtn.textContent = 'Download';
+                downloadBtn.onclick = function() {
+                    const link = document.createElement('a');
+                    link.href = dataURL;
+                    link.download = `${itemName}.png`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                };
+                
+                // Append elements to item container
+                itemDiv.appendChild(img);
+                itemDiv.appendChild(nameDiv);
+                itemDiv.appendChild(downloadBtn);
+                
+                // Add item to grid
+                itemGrid.appendChild(itemDiv);
+            });
+        });
+    </script>
+</body>
+</html> 

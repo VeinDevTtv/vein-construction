@@ -17,6 +17,7 @@ end)
 
 -- NPC Variables
 local jobNPC = nil
+local shopNPC = nil
 
 -- Create job NPC and add target interactions
 function CreateJobNPC()
@@ -545,115 +546,41 @@ end)
 
 -- Setup Construction NPCs
 function SetupConstructionNPCs()
-    local jobNPC = Config.JobNPC
-    
-    -- Check if ox_target exists
-    if GetResourceState('ox_target') == 'started' then
-        -- Use ox_target for interactions
-        exports.ox_target:addModel(jobNPC.model, {
-            {
-                name = 'construction_job',
-                icon = 'fas fa-hard-hat',
-                label = 'Talk to Foreman',
-                onSelect = function()
-                    TriggerEvent('vein-construction:client:interactNPC', 'job')
-                end,
-                canInteract = function()
-                    return true
-                end,
-                distance = 2.5
-            }
-        })
-        
-        exports.ox_target:addModel(Config.ShopNPC.model, {
-            {
-                name = 'construction_shop',
-                icon = 'fas fa-store',
-                label = 'Construction Shop',
-                onSelect = function()
-                    TriggerEvent('vein-construction:client:interactNPC', 'shop')
-                end,
-                canInteract = function()
-                    return true
-                end,
-                distance = 2.5
-            }
-        })
-    else
-        -- Fallback to basic interaction via proximity
-        CreateThread(function()
-            local foreman = nil
-            local shopkeeper = nil
-            
-            -- Create the foreman NPC
-            RequestModel(jobNPC.model)
-            while not HasModelLoaded(jobNPC.model) do
-                Wait(10)
-            end
-            
-            foreman = CreatePed(4, jobNPC.model, jobNPC.coords.x, jobNPC.coords.y, jobNPC.coords.z - 1.0, jobNPC.heading, false, true)
-            FreezeEntityPosition(foreman, true)
-            SetEntityInvincible(foreman, true)
-            SetBlockingOfNonTemporaryEvents(foreman, true)
-            TaskStartScenarioInPlace(foreman, "WORLD_HUMAN_CLIPBOARD", 0, true)
-            
-            -- Create the shop NPC
-            RequestModel(Config.ShopNPC.model)
-            while not HasModelLoaded(Config.ShopNPC.model) do
-                Wait(10)
-            end
-            
-            shopkeeper = CreatePed(4, Config.ShopNPC.model, Config.ShopNPC.coords.x, Config.ShopNPC.coords.y, Config.ShopNPC.coords.z - 1.0, Config.ShopNPC.heading, false, true)
-            FreezeEntityPosition(shopkeeper, true)
-            SetEntityInvincible(shopkeeper, true)
-            SetBlockingOfNonTemporaryEvents(shopkeeper, true)
-            TaskStartScenarioInPlace(shopkeeper, "WORLD_HUMAN_STAND_IMPATIENT", 0, true)
-            
-            -- Main loop for proximity check
-            while true do
-                local playerPed = PlayerPedId()
-                local coords = GetEntityCoords(playerPed)
-                local sleep = 1000
-                
-                -- Job NPC interaction
-                local foremanCoords = GetEntityCoords(foreman)
-                local distToForeman = #(coords - foremanCoords)
-                
-                if distToForeman < 5.0 then
-                    sleep = 0
-                    DrawMarker(2, jobNPC.coords.x, jobNPC.coords.y, jobNPC.coords.z + 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.3, 0.3, 0.3, 255, 255, 255, 100, false, true, 2, false, nil, nil, false)
-                    
-                    if distToForeman < 2.0 then
-                        DrawText3D(foremanCoords.x, foremanCoords.y, foremanCoords.z + 1.0, '[E] Talk to Foreman')
-                        
-                        if IsControlJustPressed(0, 38) then -- E key
-                            TriggerEvent('vein-construction:client:interactNPC', 'job')
-                        end
-                    end
-                end
-                
-                -- Shop NPC interaction
-                local shopkeeperCoords = GetEntityCoords(shopkeeper)
-                local distToShopkeeper = #(coords - shopkeeperCoords)
-                
-                if distToShopkeeper < 5.0 then
-                    sleep = 0
-                    DrawMarker(2, Config.ShopNPC.coords.x, Config.ShopNPC.coords.y, Config.ShopNPC.coords.z + 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.3, 0.3, 0.3, 255, 255, 255, 100, false, true, 2, false, nil, nil, false)
-                    
-                    if distToShopkeeper < 2.0 then
-                        DrawText3D(shopkeeperCoords.x, shopkeeperCoords.y, shopkeeperCoords.z + 1.0, '[E] Construction Shop')
-                        
-                        if IsControlJustPressed(0, 38) then -- E key
-                            TriggerEvent('vein-construction:client:interactNPC', 'shop')
-                        end
-                    end
-                end
-                
-                Wait(sleep)
-            end
-        end)
-    end
+    print('Setting up construction NPCs...')
+    TriggerEvent('vein-construction:client:setupNPCs')
+    print('Construction NPCs setup complete')
 end
+
+-- Add event to re-create NPCs if they get deleted
+RegisterNetEvent('vein-construction:client:respawnNPCs', function()
+    print('Respawning construction NPCs...')
+    
+    -- Delete existing NPCs if they exist
+    if DoesEntityExist(jobNPC) then
+        DeleteEntity(jobNPC)
+    end
+    
+    if DoesEntityExist(shopNPC) then
+        DeleteEntity(shopNPC)
+    end
+    
+    -- Create new NPCs
+    Wait(500)
+    TriggerEvent('vein-construction:client:setupNPCs')
+end)
+
+-- Process the NPC setup
+RegisterNetEvent('vein-construction:client:setupNPCs', function()
+    -- Create the job NPC if it doesn't exist yet
+    if not DoesEntityExist(jobNPC) then
+        CreateJobNPC()
+    end
+    
+    -- Create shop NPC if it's not already created
+    if Config.ShopNPC and not DoesEntityExist(shopNPC) then
+        CreateShopNPC()
+    end
+end)
 
 -- Function to draw 3D text
 function DrawText3D(x, y, z, text)
@@ -669,4 +596,62 @@ function DrawText3D(x, y, z, text)
     local factor = (string.len(text)) / 370
     DrawRect(0.0, 0.0+0.0125, 0.017+ factor, 0.03, 0, 0, 0, 75)
     ClearDrawOrigin()
+end
+
+-- Create shop NPC
+function CreateShopNPC()
+    -- Check if NPC already exists
+    if DoesEntityExist(shopNPC) then
+        DeleteEntity(shopNPC)
+    end
+    
+    -- Request the model
+    local model = GetHashKey(Config.ShopNPC.model)
+    RequestModel(model)
+    
+    while not HasModelLoaded(model) do
+        Wait(1)
+    end
+    
+    -- Create the ped
+    shopNPC = CreatePed(4, model, Config.ShopNPC.coords.x, Config.ShopNPC.coords.y, Config.ShopNPC.coords.z - 1.0, Config.ShopNPC.heading, false, true)
+    FreezeEntityPosition(shopNPC, true)
+    SetEntityInvincible(shopNPC, true)
+    SetBlockingOfNonTemporaryEvents(shopNPC, true)
+    
+    -- Set the ped into a scenario
+    TaskStartScenarioInPlace(shopNPC, "WORLD_HUMAN_STAND_IMPATIENT", 0, true)
+    
+    -- Add target interactions
+    if GetResourceState('ox_target') == 'started' then
+        -- Use ox_target
+        exports.ox_target:addLocalEntity(shopNPC, {
+            {
+                name = 'construction_shop',
+                icon = 'fas fa-shopping-cart',
+                label = 'Construction Shop',
+                distance = 2.0,
+                onSelect = function()
+                    TriggerEvent('vein-construction:client:interactNPC', 'shop')
+                end
+            }
+        })
+    else
+        -- Use qb-target
+        exports['qb-target']:AddTargetEntity(shopNPC, {
+            options = {
+                {
+                    type = "client",
+                    event = "vein-construction:client:interactNPC",
+                    icon = "fas fa-shopping-cart",
+                    label = "Construction Shop",
+                    job = "all",
+                    action = 'shop'
+                }
+            },
+            distance = 2.0
+        })
+    end
+    
+    print('Shop NPC created')
 end 

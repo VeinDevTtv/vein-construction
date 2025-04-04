@@ -471,20 +471,38 @@ AddEventHandler('onResourceStart', function(resourceName)
 end)
 
 -- Shared functions for the server
-Vein = {}
-
--- Get rank based on XP
-Vein.GetRankByXP = function(xp)
-    local highestRankIndex = 1
-    for i, rank in ipairs(Config.Ranks) do
-        if xp >= rank.xpNeeded then
-            highestRankIndex = i
-        else
-            break
+Vein = {
+    -- Get rank based on XP amount
+    GetRankByXP = function(xp)
+        -- Ensure xp is a number
+        xp = tonumber(xp) or 0
+        
+        -- Find the highest rank the player qualifies for
+        local highestRank = Config.Ranks[1] -- Default to first rank
+        
+        for _, rank in ipairs(Config.Ranks) do
+            if xp >= rank.xpRequired then
+                highestRank = rank
+            else
+                break -- Exit loop once we find a rank with higher XP requirement
+            end
         end
+        
+        return highestRank
+    end,
+    
+    -- Get payment based on rank
+    GetPaymentForRank = function(rankName)
+        for _, rank in ipairs(Config.Ranks) do
+            if rank.name == rankName then
+                return rank.payRate
+            end
+        end
+        
+        -- Default to apprentice if rank not found
+        return Config.Ranks[1].payRate
     end
-    return Config.Ranks[highestRankIndex]
-end
+}
 
 -- Buy item from construction shop
 RegisterNetEvent('vein-construction:server:buyItem', function(itemName, price)
