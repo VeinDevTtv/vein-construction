@@ -10,6 +10,40 @@
 </head>
 <body>
     <div id="construction-ui">
+        <!-- Status display (for job status, current task, etc.) -->
+        <div id="status-display" class="hidden">
+            <div class="status-title">
+                <i class="fas fa-hard-hat"></i>
+                <span>Job Status</span>
+            </div>
+            <div class="status-content">
+                <div class="status-item">
+                    <div class="status-label">Duty Status:</div>
+                    <div class="status-value" id="status-duty">Off Duty</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Current Rank:</div>
+                    <div class="status-value" id="status-rank">Apprentice</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Experience:</div>
+                    <div class="status-value" id="status-xp">0 XP</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Current Site:</div>
+                    <div class="status-value" id="status-site">None</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Current Task:</div>
+                    <div class="status-value" id="status-task">None</div>
+                </div>
+                <div class="progress-container">
+                    <div class="progress-bar" id="status-progress-bar" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main menu container -->
         <div id="menu-container" class="hidden">
             <div class="menu-header">
                 <h2 id="menu-title">Menu Title</h2>
@@ -20,11 +54,26 @@
             </div>
             <div id="menu-footer">
                 <button id="back-button" class="hidden"><i class="fas fa-arrow-left"></i> Back</button>
+                <div class="footer-info" id="footer-info"></div>
             </div>
         </div>
 
+        <!-- Notification container -->
         <div id="notification-container">
             <!-- Notifications will be inserted here -->
+        </div>
+
+        <!-- Progress overlay (for tasks/actions with progress bars) -->
+        <div id="progress-overlay" class="hidden">
+            <div class="progress-content">
+                <div class="progress-icon">
+                    <i class="fas fa-spinner fa-spin"></i>
+                </div>
+                <div class="progress-label" id="progress-label">Loading...</div>
+                <div class="progress-container">
+                    <div class="progress-bar" id="progress-bar" style="width: 0%"></div>
+                </div>
+            </div>
         </div>
     </div>
 

@@ -182,58 +182,98 @@ end
 
 -- Open job application menu
 function OpenJobMenu()
-    local options = {
+    -- Check if player is already a construction worker
+    local isConstructionWorker = PlayerData.job and PlayerData.job.name == Config.JobName
+    
+    if isConstructionWorker then
+        QBCore.Functions.Notify('You are already a construction worker', 'error')
+        return
+    end
+    
+    local sections = {
         {
-            title = 'Apply for Construction Job',
-            description = 'Start working as a construction worker',
-            icon = 'fas fa-hard-hat',
-            onSelect = function()
-                ApplyForJob()
-            end
+            title = "Employment Options",
+            items = {
+                {
+                    title = 'Apply for Construction Job',
+                    description = 'Start working as a construction worker',
+                    icon = 'fas fa-hard-hat',
+                    onSelect = function()
+                        ApplyForJob()
+                    end
+                }
+            }
         },
         {
-            title = 'Job Information',
-            description = 'Learn about the construction job',
-            icon = 'fas fa-info-circle',
-            onSelect = function()
-                ShowJobInformation()
-            end
+            title = "Information",
+            items = {
+                {
+                    title = 'Job Information',
+                    description = 'Learn about the construction job',
+                    icon = 'fas fa-info-circle',
+                    onSelect = function()
+                        ShowJobInformation()
+                    end
+                }
+            }
         }
     }
     
-    ShowMenu('construction_job_menu', 'Construction Job', options)
+    CreateSectionedMenu('construction_job_menu', 'Construction Job', sections)
 end
 
 -- Show job information menu
 function ShowJobInformation()
-    local options = {
+    local sections = {
         {
-            title = 'Available Ranks',
-            description = 'View job ranks and requirements',
-            icon = 'fas fa-user-tie',
-            onSelect = function()
-                ShowRankInformation()
-            end
+            title = "Job Details",
+            items = {
+                {
+                    title = 'Available Ranks',
+                    description = 'View job ranks and requirements',
+                    icon = 'fas fa-user-tie',
+                    onSelect = function()
+                        ShowRankInformation()
+                    end
+                },
+                {
+                    title = 'Job Tasks',
+                    description = 'Learn about available tasks',
+                    icon = 'fas fa-tasks',
+                    onSelect = function()
+                        ShowTaskInformation()
+                    end
+                },
+                {
+                    title = 'Required Equipment',
+                    description = 'View required tools and safety gear',
+                    icon = 'fas fa-tools',
+                    onSelect = function()
+                        ShowEquipmentInformation()
+                    end
+                }
+            }
         },
         {
-            title = 'Job Tasks',
-            description = 'Learn about available tasks',
-            icon = 'fas fa-tasks',
-            onSelect = function()
-                ShowTaskInformation()
-            end
-        },
-        {
-            title = 'Required Equipment',
-            description = 'View required tools and safety gear',
-            icon = 'fas fa-tools',
-            onSelect = function()
-                ShowEquipmentInformation()
-            end
+            title = "Job Benefits",
+            items = {
+                {
+                    title = 'Competitive Pay',
+                    description = 'Earn $500-$2500 per hour based on rank',
+                    icon = 'fas fa-money-bill-wave',
+                    onSelect = false
+                },
+                {
+                    title = 'Career Advancement',
+                    description = 'Progress from Apprentice to Site Manager',
+                    icon = 'fas fa-chart-line',
+                    onSelect = false
+                }
+            }
         }
     }
     
-    ShowMenu('job_info', 'Job Information', options, 'construction_job_menu')
+    CreateSectionedMenu('job_info', 'Job Information', sections, 'construction_job_menu')
 end
 
 -- Show task information
@@ -294,105 +334,157 @@ end
 
 -- Apply for the job
 function ApplyForJob()
-    if lib then
-        lib.progressBar({
-            duration = 5000,
-            label = 'Filling out application...',
-            useWhileDead = false,
-            canCancel = true,
-            disable = {
-                car = true,
-                move = true
-            },
-            anim = {
-                dict = 'missheistdockssetup1clipboard@base',
-                clip = 'base'
-            },
-            prop = {
-                model = 'prop_notepad_01',
-                bone = 18905,
-                pos = vec3(0.1, 0.02, 0.05),
-                rot = vec3(10.0, 0.0, 0.0)
-            }
-        })
-    else
-        -- Fallback to QBCore progress
-        QBCore.Functions.Progressbar("fill_application", "Filling out application...", 5000, false, true, {
-            disableMovement = true,
-            disableCarMovement = true,
-            disableMouse = false,
-            disableCombat = true,
-        }, {
-            animDict = "missheistdockssetup1clipboard@base",
-            anim = "base",
-            flags = 49,
-        }, {
-            model = "prop_notepad_01",
-            bone = 18905,
-            coords = { x = 0.1, y = 0.02, z = 0.05 },
-            rotation = { x = 10.0, y = 0.0, z = 0.0 },
-        }, {}, function() -- Done
-            TriggerServerEvent('vein-construction:server:setJob')
-        end, function() -- Cancel
-            QBCore.Functions.Notify('Cancelled application', 'error')
-        end)
+    -- Show progress bar for filling out application
+    ShowProgressBar('Filling out application...', 5000)
+    
+    -- Set up animation
+    RequestAnimDict("missheistdockssetup1clipboard@base")
+    while not HasAnimDictLoaded("missheistdockssetup1clipboard@base") do
+        Wait(10)
     end
+    
+    -- Create props
+    local playerPed = PlayerPedId()
+    local propModel = `prop_notepad_01`
+    
+    RequestModel(propModel)
+    while not HasModelLoaded(propModel) do
+        Wait(10)
+    end
+    
+    local prop = CreateObject(propModel, 0.0, 0.0, 0.0, true, true, true)
+    local boneIndex = GetPedBoneIndex(playerPed, 18905)
+    AttachEntityToEntity(prop, playerPed, boneIndex, 0.1, 0.02, 0.05, 10.0, 0.0, 0.0, true, true, false, true, 1, true)
+    
+    -- Play animation
+    TaskPlayAnim(playerPed, "missheistdockssetup1clipboard@base", "base", 2.0, 2.0, 5000, 49, 0, false, false, false)
+    
+    -- Wait for animation and progress bar to complete
+    Citizen.SetTimeout(5000, function()
+        -- Delete prop and stop animation
+        DeleteObject(prop)
+        StopAnimTask(playerPed, "missheistdockssetup1clipboard@base", "base", 1.0)
+        
+        -- Trigger server event to set job
+        TriggerServerEvent('vein-construction:server:setJob')
+    end)
 end
 
 -- Open job management menu
 function OpenJobManagementMenu()
-    local options = {
+    local playerName = GetPlayerName(PlayerId())
+    local jobTitle = GetJobRankLabel() or 'Construction Worker'
+    local footerInfo = 'Worker: ' .. playerName .. ' | Position: ' .. jobTitle
+    
+    local sections = {
         {
-            title = 'Toggle Duty',
-            description = isOnDuty and 'Clock out from work' or 'Clock in for work',
-            icon = isOnDuty and 'fas fa-sign-out-alt' or 'fas fa-sign-in-alt',
-            onSelect = function()
-                ToggleDuty()
-            end
+            title = "Job Actions",
+            items = {
+                {
+                    title = 'Toggle Duty',
+                    description = isOnDuty and 'Clock out from work' or 'Clock in for work',
+                    icon = isOnDuty and 'fas fa-sign-out-alt' or 'fas fa-sign-in-alt',
+                    onSelect = function()
+                        ToggleDuty()
+                    end
+                }
+            }
         }
     }
     
     -- Only show task options if on duty
     if isOnDuty then
-        table.insert(options, {
-            title = 'Select Construction Site',
-            description = 'Choose a site to work at',
-            icon = 'fas fa-map-marked-alt',
-            onSelect = function()
-                SelectConstructionSite()
-            end
+        table.insert(sections, {
+            title = "Tasks & Management",
+            items = {
+                {
+                    title = 'Select Construction Site',
+                    description = 'Choose a site to work at',
+                    icon = 'fas fa-map-marked-alt',
+                    onSelect = function()
+                        SelectConstructionSite()
+                    end
+                },
+                {
+                    title = 'View Current Rank',
+                    description = 'Check your job rank and XP',
+                    icon = 'fas fa-user-tie',
+                    onSelect = function()
+                        ShowJobLevelInfo()
+                    end
+                },
+                {
+                    title = 'Check Safety Gear',
+                    description = 'Ensure you have all required safety equipment',
+                    icon = 'fas fa-hard-hat',
+                    onSelect = function()
+                        CheckSafetyGear()
+                    end
+                },
+                {
+                    title = 'Check Tool Durability',
+                    description = 'Check the condition of your tools',
+                    icon = 'fas fa-tools',
+                    onSelect = function()
+                        CheckToolDurability()
+                    end
+                }
+            }
         })
         
-        table.insert(options, {
-            title = 'View Current Rank',
-            description = 'Check your job rank and XP',
-            icon = 'fas fa-user-tie',
-            onSelect = function()
-                ViewCurrentRank()
-            end
-        })
-        
-        table.insert(options, {
-            title = 'Check Tool Durability',
-            description = 'Check the condition of your tools',
-            icon = 'fas fa-tools',
-            onSelect = function()
-                CheckToolDurability()
-            end
+        table.insert(sections, {
+            title = "Job Status",
+            items = {
+                {
+                    title = 'Toggle Status Display',
+                    description = 'Show or hide the job status display',
+                    icon = 'fas fa-eye',
+                    onSelect = function()
+                        ToggleStatusDisplay(true)
+                        UpdateJobStatus({
+                            onDuty = isOnDuty,
+                            rank = GetJobRankLabel() or 'Apprentice',
+                            site = currentSite and Config.Sites[currentSite].label or 'None',
+                            task = currentTask and currentTask.type or 'None'
+                        })
+                        QBCore.Functions.Notify('Status display enabled', 'success')
+                    end
+                }
+            }
         })
     end
     
     -- Add quit job option
-    table.insert(options, {
-        title = 'Quit Job',
-        description = 'Resign from construction work',
-        icon = 'fas fa-user-times',
-        onSelect = function()
-            QuitJob()
-        end
+    table.insert(sections, {
+        title = "Employment",
+        items = {
+            {
+                title = 'Quit Job',
+                description = 'Resign from construction work',
+                icon = 'fas fa-user-times',
+                onSelect = function()
+                    QuitJob()
+                end
+            }
+        }
     })
     
-    ShowMenu('job_management', 'Job Management', options)
+    CreateSectionedMenu('job_management', 'Job Management', sections, nil, footerInfo)
+end
+
+-- Helper function to get current rank label
+function GetJobRankLabel()
+    if not PlayerData or not PlayerData.metadata or not PlayerData.metadata.constructionrank then
+        return 'Apprentice'
+    end
+    
+    for _, rank in ipairs(Config.Ranks) do
+        if rank.name == PlayerData.metadata.constructionrank then
+            return rank.label
+        end
+    end
+    
+    return 'Apprentice'
 end
 
 -- Toggle duty status
@@ -476,11 +568,6 @@ function SelectConstructionSite()
     ShowMenu('select_site', 'Select Construction Site', options, 'job_management')
 end
 
--- View current rank and XP
-function ViewCurrentRank()
-    TriggerServerEvent('vein-construction:server:requestRankInfo')
-end
-
 -- Show Rank Information (called from server)
 RegisterNetEvent('vein-construction:client:showRankInfo', function(rankName, xp, nextRankXP)
     local currentRank
@@ -526,50 +613,93 @@ end)
 
 -- Check tool durability
 function CheckToolDurability()
-    local toolList = {}
+    local sections = {
+        {
+            title = "Your Tools",
+            items = {}
+        }
+    }
     
-    for tool, durability in pairs(toolDurabilities) do
+    -- Add tools with durability status
+    local hasTools = false
+    
+    for tool, data in pairs(toolDurabilities) do
+        hasTools = true
         local toolConfig = Config.ToolDurability[tool]
         if toolConfig then
-            local usesLeft = toolConfig.uses - durability
+            local usesLeft = toolConfig.uses - data
             local percentage = math.floor((usesLeft / toolConfig.uses) * 100)
             local condition
+            local icon
             
             if percentage > 70 then
                 condition = 'Good'
+                icon = 'fas fa-check-circle'
             elseif percentage > 30 then
                 condition = 'Fair'
+                icon = 'fas fa-exclamation-circle'
             else
                 condition = 'Poor'
+                icon = 'fas fa-times-circle'
             end
             
-            table.insert(toolList, {
+            table.insert(sections[1].items, {
                 title = tool:gsub("^%l", string.upper):gsub("_", " "),
                 description = 'Condition: ' .. condition .. ' (' .. percentage .. '%)',
-                icon = 'fas fa-tools'
+                icon = icon,
+                progress = percentage,
+                onSelect = false
             })
         end
     end
     
-    if #toolList == 0 then
-        table.insert(toolList, {
+    -- No tools used yet
+    if not hasTools then
+        table.insert(sections[1].items, {
             title = 'No Tools Used',
             description = 'You haven\'t used any tools yet',
-            icon = 'fas fa-tools'
+            icon = 'fas fa-info-circle',
+            onSelect = false
+        })
+    else
+        -- Add repair option
+        table.insert(sections, {
+            title = "Maintenance",
+            items = {
+                {
+                    title = 'Repair All Tools',
+                    description = 'Pay to repair all your tools',
+                    icon = 'fas fa-wrench',
+                    onSelect = function()
+                        RepairTools()
+                    end
+                }
+            }
         })
     end
     
-    -- Add repair option
-    table.insert(toolList, {
-        title = 'Repair Tools',
-        description = 'Pay to repair all your tools',
-        icon = 'fas fa-wrench',
-        onSelect = function()
-            RepairTools()
-        end
-    })
+    CreateSectionedMenu('tool_durability', 'Tool Durability', sections, 'job_management')
     
-    ShowMenu('tool_durability', 'Tool Durability', toolList, 'job_management')
+    -- Update status display with tool info
+    if hasTools then
+        -- Find the worst condition tool for status display
+        local worstCondition = 100
+        for tool, data in pairs(toolDurabilities) do
+            local toolConfig = Config.ToolDurability[tool]
+            if toolConfig then
+                local usesLeft = toolConfig.uses - data
+                local percentage = math.floor((usesLeft / toolConfig.uses) * 100)
+                if percentage < worstCondition then
+                    worstCondition = percentage
+                end
+            end
+        end
+        
+        -- Update job status with tool condition
+        UpdateJobStatus({
+            toolCondition = worstCondition
+        })
+    end
 end
 
 -- Repair all tools
@@ -587,26 +717,54 @@ function RepairTools()
         end
     end
     
-    local options = {
+    -- Create sections for the repair menu
+    local sections = {
         {
-            title = 'Confirm Repair',
-            description = 'Cost: $' .. totalCost,
-            icon = 'fas fa-check',
-            onSelect = function()
-                TriggerServerEvent('vein-construction:server:repairTools', totalCost)
-                toolDurabilities = {}
-            end
+            title = "Repair Details",
+            items = {
+                {
+                    title = 'Total Repair Cost',
+                    description = '$' .. totalCost,
+                    icon = 'fas fa-dollar-sign',
+                    onSelect = false
+                }
+            }
         },
         {
-            title = 'Cancel',
-            icon = 'fas fa-times',
-            onSelect = function()
-                ShowMenu('tool_durability', 'Tool Durability', {}, 'job_management')
-            end
+            title = "Actions",
+            items = {
+                {
+                    title = 'Confirm Repair',
+                    description = 'Pay $' .. totalCost .. ' to repair all tools',
+                    icon = 'fas fa-check',
+                    onSelect = function()
+                        -- Start a progress bar for the repair process
+                        ShowProgressBar('Repairing tools...', 3000)
+                        
+                        -- Trigger server event after progress bar is done
+                        Citizen.SetTimeout(3000, function()
+                            TriggerServerEvent('vein-construction:server:repairTools', totalCost)
+                            toolDurabilities = {}
+                            
+                            -- Update job status after repair
+                            UpdateJobStatus({
+                                toolCondition = 100
+                            })
+                        end)
+                    end
+                },
+                {
+                    title = 'Cancel',
+                    icon = 'fas fa-times',
+                    onSelect = function()
+                        CheckToolDurability()
+                    end
+                }
+            }
         }
     }
     
-    ShowMenu('repair_tools', 'Repair Tools', options, 'tool_durability')
+    CreateSectionedMenu('repair_tools', 'Repair Tools', sections, 'tool_durability')
 end
 
 -- Quit job
