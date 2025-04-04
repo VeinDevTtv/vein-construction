@@ -1,11 +1,10 @@
 -- Initialize QBCore
 local QBCore = exports['qb-core']:GetCoreObject()
 
--- Check if ox_lib is available and define lib
-local lib
-if GetResourceState('ox_lib') ~= 'missing' then
-    lib = exports.ox_lib
-end
+-- Local variables for lib access
+local hasOxLib = false
+local lib = nil
+local libInitialized = false
 
 -- Import the ShowMenu function from client/ui.lua
 local ShowMenu = function(id, title, options, parent)
@@ -49,16 +48,43 @@ local currentSite = nil
 local activeBlips = {}
 local safetyCheckTimer = nil
 local toolDurabilities = {}
-local hasOxLib = false
 
--- Check if ox_lib is available
+-- Check if ox_lib is available with proper initialization
 Citizen.CreateThread(function()
-    -- Check if ox_lib is available
+    -- Wait a moment to ensure other resources are loaded
+    Citizen.Wait(1000)
+    
+    -- Check if ox_lib is started
     if GetResourceState('ox_lib') == 'started' then
         hasOxLib = true
         lib = exports['ox_lib']
+        
+        -- Make sure the lib export is fully initialized
+        local maxAttempts = 10
+        local attempts = 0
+        
+        while attempts < maxAttempts do
+            attempts = attempts + 1
+            
+            -- Check if we can access functions in the export
+            if lib and type(lib) == 'table' and type(lib.registerContext) == 'function' then
+                print('ox_lib fully initialized in main module after', attempts, 'attempts')
+                libInitialized = true
+                break
+            end
+            
+            print('Waiting for ox_lib to fully initialize... attempt', attempts)
+            Citizen.Wait(500)
+        end
+        
+        if not libInitialized then
+            print('WARNING: ox_lib did not fully initialize after', maxAttempts, 'attempts')
+        end
     end
-    print('ox_lib detection in main module:', hasOxLib)
+    
+    print('ox_lib detection status in main module:')
+    print('  - Resource detected:', hasOxLib)
+    print('  - Fully initialized:', libInitialized)
 end)
 
 -- Initialize the script
@@ -475,7 +501,7 @@ function OpenJobManagementMenu()
         icon = "fas fa-sign-out-alt",
         onSelect = function()
             -- Create confirmation dialog with QBCore if ox_lib is not available
-            if hasOxLib and lib then
+            if hasOxLib and lib and libInitialized then
                 local confirm = SafelyUseOxLib('alertDialog', {
                     header = 'Quit Construction Job',
                     content = 'Are you sure you want to quit? You will lose your current rank and experience.',
@@ -511,25 +537,60 @@ function OpenJobManagementMenu()
     
     -- Function to safely use ox_lib
     function SafelyUseOxLib(action, ...)
-        if hasOxLib and lib then
+        if hasOxLib and lib and libInitialized then
             if action == 'hideContext' then
+                if type(lib.hideContext) ~= "function" then
+                    print('ox_lib.hideContext is not a function, type:', type(lib.hideContext))
+                    return nil
+                end
                 return lib.hideContext(...)
             elseif action == 'registerContext' then
+                if type(lib.registerContext) ~= "function" then
+                    print('ox_lib.registerContext is not a function, type:', type(lib.registerContext))
+                    return nil
+                end
                 return lib.registerContext(...)
             elseif action == 'showContext' then
+                if type(lib.showContext) ~= "function" then
+                    print('ox_lib.showContext is not a function, type:', type(lib.showContext))
+                    return nil
+                end
                 return lib.showContext(...)
             elseif action == 'alertDialog' then
+                if type(lib.alertDialog) ~= "function" then
+                    print('ox_lib.alertDialog is not a function, type:', type(lib.alertDialog))
+                    return nil
+                end
                 return lib.alertDialog(...)
             elseif action == 'progressBar' then
+                if type(lib.progressBar) ~= "function" then
+                    print('ox_lib.progressBar is not a function, type:', type(lib.progressBar))
+                    return nil
+                end
                 return lib.progressBar(...)
             elseif action == 'notify' then
+                if type(lib.notify) ~= "function" then
+                    print('ox_lib.notify is not a function, type:', type(lib.notify))
+                    return nil
+                end
                 return lib.notify(...)
             else
-                print('Unknown ox_lib action:', action)
+                print('Unknown action:', action)
                 return nil
             end
         else
-            print('ox_lib is not available for action:', action)
+            -- Debug what's missing
+            print('ox_lib not available for action:', action)
+            print('hasOxLib:', hasOxLib)
+            print('lib exists:', lib ~= nil)
+            print('libInitialized:', libInitialized)
+            if lib then
+                print('lib type:', type(lib))
+                print('Available functions:')
+                for k, v in pairs(lib) do
+                    print('  -', k, type(v))
+                end
+            end
             return nil
         end
     end
@@ -663,7 +724,7 @@ RegisterNetEvent('vein-construction:client:showRankInfo', function(rankName, xp,
         description = description .. '\nCommission: ' .. (currentRank.commission * 100) .. '%'
     end
     
-    if hasOxLib and lib then
+    if hasOxLib and lib and libInitialized then
         SafelyUseOxLib('notify', {
             title = title,
             description = description,
@@ -1173,7 +1234,7 @@ RegisterNetEvent('vein-construction:client:notifyRankUp', function(rankData)
         description = description .. '\nCommission: ' .. (currentRank.commission * 100) .. '%'
     end
     
-    if hasOxLib and lib then
+    if hasOxLib and lib and libInitialized then
         SafelyUseOxLib('notify', {
             title = title,
             description = description,

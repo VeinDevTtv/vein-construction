@@ -8,42 +8,75 @@ local materialProps = {
 
 -- Check if ox_lib is available
 local hasOxLib = false
+local lib = nil
+local libInitialized = false
 
 -- Check for ox_lib on resource start
 Citizen.CreateThread(function()
-    -- Check if ox_lib is available
+    -- Wait a moment to ensure other resources are loaded
+    Citizen.Wait(1000)
+    
+    -- Check if ox_lib is started
     if GetResourceState('ox_lib') == 'started' then
         hasOxLib = true
-        -- lib will be available globally if ox_lib is loaded
+        lib = exports['ox_lib']
+        
+        -- Make sure the lib export is fully initialized
+        local maxAttempts = 10
+        local attempts = 0
+        
+        while attempts < maxAttempts do
+            attempts = attempts + 1
+            
+            -- Check if we can access functions in the export
+            if lib and type(lib) == 'table' and type(lib.registerContext) == 'function' then
+                print('ox_lib fully initialized in Tasks module after', attempts, 'attempts')
+                libInitialized = true
+                break
+            end
+            
+            print('Waiting for ox_lib to fully initialize in Tasks module... attempt', attempts)
+            Citizen.Wait(500)
+        end
+        
+        if not libInitialized then
+            print('WARNING: ox_lib did not fully initialize in Tasks module after', maxAttempts, 'attempts')
+        end
     end
-    print('ox_lib detection in Tasks module:', hasOxLib)
+    
+    print('ox_lib detection status in Tasks module:')
+    print('  - Resource detected:', hasOxLib)
+    print('  - Fully initialized:', libInitialized)
 end)
 
 -- Function to safely use ox_lib
 function SafelyUseOxLib(action, ...)
-    if hasOxLib and type(_G.lib) == "table" then
-        if action == 'hideContext' and _G.lib.hideContext then
-            return _G.lib.hideContext(...)
-        elseif action == 'registerContext' and _G.lib.registerContext then
-            return _G.lib.registerContext(...)
-        elseif action == 'showContext' and _G.lib.showContext then
-            return _G.lib.showContext(...)
-        elseif action == 'alertDialog' and _G.lib.alertDialog then
-            return _G.lib.alertDialog(...)
-        elseif action == 'progressBar' and _G.lib.progressBar then
-            return _G.lib.progressBar(...)
-        elseif action == 'notify' and _G.lib.notify then
-            return _G.lib.notify(...)
-        elseif action == 'showTextUI' and _G.lib.showTextUI then
-            return _G.lib.showTextUI(...)
-        elseif action == 'hideTextUI' and _G.lib.hideTextUI then
-            return _G.lib.hideTextUI(...)
+    if hasOxLib and lib and libInitialized then
+        if action == 'hideContext' and type(lib.hideContext) == "function" then
+            return lib.hideContext(...)
+        elseif action == 'registerContext' and type(lib.registerContext) == "function" then
+            return lib.registerContext(...)
+        elseif action == 'showContext' and type(lib.showContext) == "function" then
+            return lib.showContext(...)
+        elseif action == 'alertDialog' and type(lib.alertDialog) == "function" then
+            return lib.alertDialog(...)
+        elseif action == 'progressBar' and type(lib.progressBar) == "function" then
+            return lib.progressBar(...)
+        elseif action == 'notify' and type(lib.notify) == "function" then
+            return lib.notify(...)
+        elseif action == 'showTextUI' and type(lib.showTextUI) == "function" then
+            return lib.showTextUI(...)
+        elseif action == 'hideTextUI' and type(lib.hideTextUI) == "function" then
+            return lib.hideTextUI(...)
         else
             print('Unknown action or method not available:', action)
             return nil
         end
     else
         print('ox_lib not available for action:', action)
+        print('hasOxLib:', hasOxLib)
+        print('lib exists:', lib ~= nil)
+        print('libInitialized:', libInitialized)
         return nil
     end
 end
@@ -147,7 +180,7 @@ function PickupMaterial()
     -- Start carrying animation
     isCarryingObject = true
     
-    if hasOxLib and type(_G.lib) == "table" then
+    if hasOxLib and lib and libInitialized then
         SafelyUseOxLib('progressBar', {
             duration = 3000,
             label = 'Picking up ' .. materialType:gsub("_", " ") .. '...',
@@ -256,7 +289,7 @@ function DropoffMaterial()
     end
     
     -- Complete task
-    if hasOxLib and type(_G.lib) == "table" then
+    if hasOxLib and lib and libInitialized then
         SafelyUseOxLib('progressBar', {
             duration = 2000,
             label = 'Placing materials...',

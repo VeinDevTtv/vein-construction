@@ -2,36 +2,65 @@
 local QBCore = exports['qb-core']:GetCoreObject()
 local PlayerData = QBCore.Functions.GetPlayerData()
 local hasOxLib = false
-local lib
+local lib = nil
+local libInitialized = false
 
 -- Check if ox_lib is available
 Citizen.CreateThread(function()
-    -- Check if ox_lib is available
+    -- Wait a moment to ensure other resources are loaded
+    Citizen.Wait(1000)
+    
+    -- Check if ox_lib is started
     if GetResourceState('ox_lib') == 'started' then
         hasOxLib = true
         lib = exports['ox_lib']
+        
+        -- Make sure the lib export is fully initialized
+        local maxAttempts = 10
+        local attempts = 0
+        
+        while attempts < maxAttempts do
+            attempts = attempts + 1
+            
+            -- Check if we can access functions in the export
+            if lib and type(lib) == 'table' and type(lib.registerContext) == 'function' then
+                print('ox_lib fully initialized in Events module after', attempts, 'attempts')
+                libInitialized = true
+                break
+            end
+            
+            print('Waiting for ox_lib to fully initialize in Events module... attempt', attempts)
+            Citizen.Wait(500)
+        end
+        
+        if not libInitialized then
+            print('WARNING: ox_lib did not fully initialize in Events module after', maxAttempts, 'attempts')
+        end
     end
-    print('ox_lib detection in Events module:', hasOxLib)
+    
+    print('ox_lib detection status in Events module:')
+    print('  - Resource detected:', hasOxLib)
+    print('  - Fully initialized:', libInitialized)
 end)
 
 -- Function to safely use ox_lib
 function SafelyUseOxLib(action, ...)
-    if hasOxLib and lib then
-        if action == 'hideContext' then
+    if hasOxLib and lib and libInitialized then
+        if action == 'hideContext' and type(lib.hideContext) == "function" then
             return lib.hideContext(...)
-        elseif action == 'registerContext' then
+        elseif action == 'registerContext' and type(lib.registerContext) == "function" then
             return lib.registerContext(...)
-        elseif action == 'showContext' then
+        elseif action == 'showContext' and type(lib.showContext) == "function" then
             return lib.showContext(...)
-        elseif action == 'alertDialog' then
+        elseif action == 'alertDialog' and type(lib.alertDialog) == "function" then
             return lib.alertDialog(...)
-        elseif action == 'progressBar' then
+        elseif action == 'progressBar' and type(lib.progressBar) == "function" then
             return lib.progressBar(...)
-        elseif action == 'notify' then
+        elseif action == 'notify' and type(lib.notify) == "function" then
             return lib.notify(...)
-        elseif action == 'showTextUI' then
+        elseif action == 'showTextUI' and type(lib.showTextUI) == "function" then
             return lib.showTextUI(...)
-        elseif action == 'hideTextUI' then
+        elseif action == 'hideTextUI' and type(lib.hideTextUI) == "function" then
             return lib.hideTextUI(...)
         else
             print('Unknown action:', action)
@@ -39,6 +68,9 @@ function SafelyUseOxLib(action, ...)
         end
     else
         print('ox_lib not available for action:', action)
+        print('hasOxLib:', hasOxLib)
+        print('lib exists:', lib ~= nil)
+        print('libInitialized:', libInitialized)
         return nil
     end
 end
@@ -46,7 +78,7 @@ end
 -- Function to handle notifications based on available libraries
 function SendNotification(title, message, type, icon)
     -- This will be overridden by the function in ui.lua
-    if hasOxLib and lib then
+    if hasOxLib and lib and libInitialized then
         SafelyUseOxLib('notify', {
             title = title,
             description = message,
@@ -393,8 +425,9 @@ function ShowRankInformation()
 end
 
 -- View active construction projects
-RegisterNetEvent('vein-construction:client:viewActiveProjects', function(projects)
-    if #projects == 0 then
+RegisterNetEvent('vein-construction:client:viewActiveProjects')
+AddEventHandler('vein-construction:client:viewActiveProjects', function(projects)
+    if not projects or #projects == 0 then
         SendNotification('No active projects', 'error')
         return
     end

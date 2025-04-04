@@ -26,14 +26,49 @@ local jobStatus = {
 -- Check if ox_lib is available
 local hasOxLib = false
 local lib = nil
+local libInitialized = false
 
 Citizen.CreateThread(function()
-    -- Check if ox_lib is available
+    -- Wait a moment to ensure other resources are loaded
+    Citizen.Wait(1000)
+    
+    -- Check if ox_lib is started
     if GetResourceState('ox_lib') == 'started' then
         hasOxLib = true
         lib = exports['ox_lib']
+        
+        -- Make sure the lib export is fully initialized
+        local maxAttempts = 10
+        local attempts = 0
+        
+        while attempts < maxAttempts do
+            attempts = attempts + 1
+            
+            -- Check if we can access functions in the export
+            if lib and type(lib) == 'table' and CheckLibFunctions() then
+                print('ox_lib fully initialized in UI module after', attempts, 'attempts')
+                libInitialized = true
+                break
+            end
+            
+            print('Waiting for ox_lib to fully initialize in UI module... attempt', attempts)
+            Citizen.Wait(500)
+        end
+        
+        if not libInitialized then
+            print('WARNING: ox_lib did not fully initialize in UI module after', maxAttempts, 'attempts')
+            if lib then
+                print('Available functions:')
+                for k, v in pairs(lib) do
+                    print('  -', k, type(v))
+                end
+            end
+        end
     end
-    print('ox_lib detected:', hasOxLib)
+    
+    print('ox_lib detection status in UI module:')
+    print('  - Resource detected:', hasOxLib)
+    print('  - Fully initialized:', libInitialized)
 end)
 
 local debugMode = false -- Set to true for debugging
@@ -102,29 +137,72 @@ end
 
 -- Function to safely use ox_lib
 function SafelyUseOxLib(action, ...)
-    if hasOxLib and lib then
+    if hasOxLib and lib and libInitialized then
         if action == 'hideContext' then
+            if type(lib.hideContext) ~= "function" then
+                print('ox_lib.hideContext is not a function, type:', type(lib.hideContext))
+                return nil
+            end
             return lib.hideContext(...)
         elseif action == 'registerContext' then
+            if type(lib.registerContext) ~= "function" then
+                print('ox_lib.registerContext is not a function, type:', type(lib.registerContext))
+                return nil
+            end
             return lib.registerContext(...)
         elseif action == 'showContext' then
+            if type(lib.showContext) ~= "function" then
+                print('ox_lib.showContext is not a function, type:', type(lib.showContext))
+                return nil
+            end
             return lib.showContext(...)
         elseif action == 'alertDialog' then
+            if type(lib.alertDialog) ~= "function" then
+                print('ox_lib.alertDialog is not a function, type:', type(lib.alertDialog))
+                return nil
+            end
             return lib.alertDialog(...)
         elseif action == 'progressBar' then
+            if type(lib.progressBar) ~= "function" then
+                print('ox_lib.progressBar is not a function, type:', type(lib.progressBar))
+                return nil
+            end
             return lib.progressBar(...)
         elseif action == 'notify' then
+            if type(lib.notify) ~= "function" then
+                print('ox_lib.notify is not a function, type:', type(lib.notify))
+                return nil
+            end
             return lib.notify(...)
         elseif action == 'showTextUI' then
+            if type(lib.showTextUI) ~= "function" then
+                print('ox_lib.showTextUI is not a function, type:', type(lib.showTextUI))
+                return nil
+            end
             return lib.showTextUI(...)
         elseif action == 'hideTextUI' then
+            if type(lib.hideTextUI) ~= "function" then
+                print('ox_lib.hideTextUI is not a function, type:', type(lib.hideTextUI))
+                return nil
+            end
             return lib.hideTextUI(...)
         else
-            print('Unknown ox_lib action:', action)
+            print('Unknown action:', action)
             return nil
         end
     else
-        print('ox_lib is not available for action:', action)
+        -- Debug what's missing
+        print('ox_lib not available for action:', action)
+        print('hasOxLib:', hasOxLib)
+        print('lib exists:', lib ~= nil)
+        print('libInitialized:', libInitialized)
+        if lib then
+            print('lib type:', type(lib))
+            print('Available functions:')
+            for k, v in pairs(lib) do
+                print('  -', k, type(v))
+            end
+        end
         return nil
     end
 end
@@ -305,7 +383,7 @@ function ShowMenu(id, title, options, parent)
     SetNuiFocus(false, false)
     
     -- If ox_lib is available, use it
-    if hasOxLib and lib then
+    if hasOxLib and lib and libInitialized then
         debugLog('Using ox_lib for menu')
         -- Create menu context
         local contextOptions = {
@@ -412,7 +490,7 @@ function SendNotification(message, type, duration)
     
     debugLog('SendNotification:', message, type, duration)
     
-    if hasOxLib and lib then
+    if hasOxLib and lib and libInitialized then
         SafelyUseOxLib('notify', {
             title = 'Construction Job',
             description = message,
@@ -431,7 +509,7 @@ function ShowAlert(message, type, icon)
     
     debugLog('ShowAlert:', message, type)
     
-    if hasOxLib and lib then
+    if hasOxLib and lib and libInitialized then
         SafelyUseOxLib('showTextUI', message, {
             position = "right-center",
             icon = icon,
@@ -452,7 +530,7 @@ end
 function ShowProgressBar(label, duration, canCancel, animation)
     debugLog('ShowProgressBar:', label, duration)
     
-    if hasOxLib and lib then
+    if hasOxLib and lib and libInitialized then
         return SafelyUseOxLib('progressBar', {
             duration = duration,
             label = label,
@@ -934,4 +1012,28 @@ end, false)
 
 TriggerEvent('chat:addSuggestion', '/fixmenu', 'Reset the UI if you get stuck in a menu')
 
-print('Vein Construction UI loaded successfully. Use /testconstructionui to test it.') 
+print('Vein Construction UI loaded successfully. Use /testconstructionui to test it.')
+
+-- Function to check if specific UI functions are available
+function CheckLibFunctions()
+    if not hasOxLib or not lib then return false end
+    
+    local requiredFunctions = {
+        'hideContext', 
+        'registerContext', 
+        'showContext',
+        'notify',
+        'progressBar',
+        'alertDialog'
+    }
+    
+    for _, funcName in ipairs(requiredFunctions) do
+        if type(lib[funcName]) ~= 'function' then
+            print('WARNING: ox_lib.' .. funcName .. ' is not a function or is missing')
+            return false
+        end
+    end
+    
+    print('All required ox_lib UI functions are available')
+    return true
+end 
