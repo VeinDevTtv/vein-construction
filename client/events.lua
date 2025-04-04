@@ -34,60 +34,144 @@ end)
 -- Register events for random occurrences and special cases
 -- Notification for rank up
 RegisterNetEvent('vein-construction:client:rankUp', function(newRank)
-    -- Play success sound
+    SendNotification('Congratulations! You have been promoted to ' .. newRank, 'success')
+    
+    -- Play celebration sound
     PlaySoundFrontend(-1, "MEDAL_UP", "HUD_MINI_GAME_SOUNDSET", 1)
     
-    -- Display notification
-    SendNotification('Promotion!', 'You\'ve been promoted to ' .. newRank.label, 'success', 'fas fa-user-tie')
-    
-    -- Display celebratory effect
+    -- Trigger visual effect
     local playerPed = PlayerPedId()
     local coords = GetEntityCoords(playerPed)
     
-    RequestNamedPtfxAsset("scr_indep_fireworks")
-    while not HasNamedPtfxAssetLoaded("scr_indep_fireworks") do
+    RequestNamedPtfxAsset("scr_rcbarry2")
+    while not HasNamedPtfxAssetLoaded("scr_rcbarry2") do
         Wait(10)
     end
     
-    UseParticleFxAssetNextCall("scr_indep_fireworks")
-    StartParticleFxNonLoopedAtCoord("scr_indep_firework_burst_spawn", 
-        coords.x, coords.y, coords.z + 5.0, 
-        0.0, 0.0, 0.0, 
-        0.5, false, false, false)
+    UseParticleFxAssetNextCall("scr_rcbarry2")
+    local particle = StartParticleFxLoopedAtCoord("scr_clown_appears", coords.x, coords.y, coords.z - 0.5, 0.0, 0.0, 0.0, 1.0, false, false, false, false)
+    SetParticleFxLoopedColour(particle, 0.0, 1.0, 0.0, 0)
+    
+    Wait(3000)
+    StopParticleFxLooped(particle, 0)
 end)
 
--- Commission notification
-RegisterNetEvent('vein-construction:client:commission', function(amount)
-    SendNotification('Commission', 'You earned $' .. amount .. ' in commission from your team\'s work', 'success', 'fas fa-percentage')
+-- Notification for commission earned
+RegisterNetEvent('vein-construction:client:commissionEarned', function(amount)
+    SendNotification('You earned a commission of $' .. amount, 'success')
 end)
 
--- Payment notification
+-- Notification for payment
 RegisterNetEvent('vein-construction:client:payment', function(amount)
-    SendNotification('Payment', 'You received $' .. amount .. ' for your work', 'success', 'fas fa-dollar-sign')
+    SendNotification('You received a payment of $' .. amount, 'success')
 end)
 
--- Tool repair notification
-RegisterNetEvent('vein-construction:client:toolsRepaired', function()
-    SendNotification('Tools Repaired', 'All your tools have been repaired', 'success', 'fas fa-wrench')
+-- Notification for tool repair
+RegisterNetEvent('vein-construction:client:toolRepaired', function(toolName, quality)
+    SendNotification('Your ' .. toolName .. ' has been repaired. New quality: ' .. quality .. '%', 'success')
 end)
 
--- Fine notification
-RegisterNetEvent('vein-construction:client:fine', function(amount)
-    SendNotification('OSHA Fine', 'You\'ve been fined $' .. amount .. ' for safety violations', 'error', 'fas fa-exclamation-triangle')
+-- Notification for fine
+RegisterNetEvent('vein-construction:client:fined', function(amount, reason)
+    SendNotification('You received a fine of $' .. amount .. ' for ' .. reason, 'error')
+    
+    -- Play fine sound
+    PlaySoundFrontend(-1, "Lose_1st", "GTAO_FM_Events_Soundset", 1)
 end)
 
--- Rank check response from server
-RegisterNetEvent('vein-construction:client:rankCheckResult', function(canPerform, taskType, requiredRank)
-    if canPerform then
-        TriggerEvent('vein-construction:client:startTask', taskType)
-    else
-        QBCore.Functions.Notify('You need to be ' .. requiredRank .. ' or higher for this task', 'error')
+-- Show assign workers menu
+RegisterNetEvent('vein-construction:client:assignWorkersMenu', function(projectId)
+    TriggerServerEvent('vein-construction:server:getAvailableWorkers', projectId)
+end)
+
+-- Display available workers for assignment
+RegisterNetEvent('vein-construction:client:displayAvailableWorkers', function(workers, projectId)
+    if #workers == 0 then
+        SendNotification('No available workers found', 'error')
+        return
+    end
+    
+    local options = {}
+    
+    for i, worker in ipairs(workers) do
+        table.insert(options, {
+            title = worker.name,
+            description = 'Rank: ' .. worker.rank .. '\nHourly Rate: $' .. worker.hourlyRate,
+            icon = 'fas fa-hard-hat',
+            onSelect = function()
+                TriggerServerEvent('vein-construction:server:assignWorker', worker.id, projectId)
+            end
+        })
+    end
+    
+    table.insert(options, {
+        title = 'Back',
+        description = 'Return to project details',
+        icon = 'fas fa-arrow-left',
+        onSelect = function()
+            TriggerServerEvent('vein-construction:server:getProjectDetails', projectId)
+        end
+    })
+    
+    ShowMenu('assign_workers_' .. projectId, 'Assign Workers', options, 'project_details_' .. projectId)
+end)
+
+-- Worker assigned confirmation
+RegisterNetEvent('vein-construction:client:workerAssigned', function(workerName, projectName)
+    SendNotification(workerName .. ' has been assigned to ' .. projectName, 'success')
+end)
+
+-- Show hire NPC worker menu
+RegisterNetEvent('vein-construction:client:showHireMenu', function(availableNPCs)
+    if #availableNPCs == 0 then
+        SendNotification('No workers available for hire at this time', 'error')
+        return
+    end
+    
+    local options = {}
+    
+    for i, npc in ipairs(availableNPCs) do
+        table.insert(options, {
+            title = npc.name,
+            description = 'Experience: ' .. npc.experience .. ' years\nSkills: ' .. npc.skills .. '\nHourly Rate: $' .. npc.rate,
+            icon = 'fas fa-user-hard-hat',
+            onSelect = function()
+                TriggerServerEvent('vein-construction:server:hireNPCWorker', npc.id)
+            end
+        })
+    end
+    
+    ShowMenu('hire_npc_workers', 'Available Workers for Hire', options)
+end)
+
+-- NPC worker hired confirmation
+RegisterNetEvent('vein-construction:client:npcHired', function(npcName)
+    SendNotification('You have hired ' .. npcName, 'success')
+end)
+
+-- Notification for OSHA inspection
+RegisterNetEvent('vein-construction:client:oshaInspection', function(inspectorName)
+    SendNotification('OSHA Inspector ' .. inspectorName .. ' is conducting a surprise inspection!', 'warning', 10000)
+    
+    -- Play alarm sound
+    PlaySoundFrontend(-1, "Beep_Red", "DLC_HEIST_HACKING_SNAKE_SOUNDS", 1)
+end)
+
+-- Show tool durability notification
+RegisterNetEvent('vein-construction:client:toolDurabilityWarning', function(toolName, durability)
+    if durability <= 25 then
+        SendNotification('Your ' .. toolName .. ' is in poor condition (' .. durability .. '%)', 'error')
+    elseif durability <= 50 then
+        SendNotification('Your ' .. toolName .. ' is wearing down (' .. durability .. '%)', 'warning')
     end
 end)
 
--- Contract job notification (for higher ranks who can manage teams)
-RegisterNetEvent('vein-construction:client:contractJob', function(jobDetails)
-    SendNotification('New Contract', 'A new construction contract is available: ' .. jobDetails.name, 'info', 'fas fa-file-contract')
+-- Tool broken notification
+RegisterNetEvent('vein-construction:client:toolBroken', function(toolName)
+    SendNotification('Your ' .. toolName .. ' has broken! You need to replace it.', 'error')
+    
+    -- Play break sound
+    PlaySoundFrontend(-1, "WOODEN_BREAK", "JEWEL_HEIST_SOUNDS", 1)
 end)
 
 -- For site managers to start new construction projects
@@ -180,7 +264,7 @@ end
 -- Display active projects
 RegisterNetEvent('vein-construction:client:displayActiveProjects', function(projects)
     if #projects == 0 then
-        QBCore.Functions.Notify('No active projects found', 'error')
+        SendNotification('No active projects found', 'error')
         return
     end
     
@@ -198,7 +282,7 @@ RegisterNetEvent('vein-construction:client:displayActiveProjects', function(proj
     end
     
     ShowMenu('active_projects', 'Active Projects', options, 'project_menu')
-end)
+end
 
 -- View details of a specific project
 function ViewProjectDetails(project)
@@ -213,14 +297,30 @@ function ViewProjectDetails(project)
             description = 'Visit the project site',
             icon = 'fas fa-map-marker-alt',
             onSelect = function()
-                -- Set GPS to project location
+                -- Set GPS to project
                 SetNewWaypoint(project.location.x, project.location.y)
-                QBCore.Functions.Notify('GPS set to project location', 'success')
+                SendNotification('GPS set to project location', 'success')
+            end
+        },
+        {
+            title = 'Assign Workers',
+            description = 'Assign workers to this project',
+            icon = 'fas fa-users',
+            onSelect = function()
+                TriggerEvent('vein-construction:client:assignWorkersMenu', project.id)
+            end
+        },
+        {
+            title = 'Back to Projects',
+            description = 'Return to project list',
+            icon = 'fas fa-arrow-left',
+            onSelect = function()
+                TriggerServerEvent('vein-construction:server:getActiveProjects')
             end
         }
     }
     
-    ShowMenu('project_details', project.name, options, 'active_projects')
+    ShowMenu('project_details_' .. project.id, 'Project: ' .. project.name, options, 'active_projects')
 end
 
 -- For Foremen and Site Managers to hire workers

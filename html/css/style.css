@@ -1,3 +1,257 @@
+/* Main Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', 'Roboto', sans-serif;
+}
+
+body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background-color: transparent;
+}
+
+#app {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: flex-start;
+    padding: 2vh;
+}
+
+/* Panel Styles */
+.panel {
+    background-color: rgba(25, 30, 35, 0.85);
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    margin-bottom: 1.5vh;
+    width: 20vw;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    border-left: 4px solid #f0a30a;
+}
+
+.panel-header {
+    background-color: rgba(45, 50, 55, 0.9);
+    padding: 1vh 1.5vw;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.panel-header i {
+    margin-right: 10px;
+    color: #f0a30a;
+    font-size: 1.2em;
+}
+
+.panel-header h2 {
+    font-size: 1.2em;
+    font-weight: 600;
+}
+
+.panel-content {
+    padding: 1.5vh 1.5vw;
+    color: #eee;
+}
+
+/* Info Row Styles */
+.info-row {
+    margin-bottom: 1.2vh;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.info-label {
+    font-weight: 500;
+    color: #aaa;
+}
+
+.info-value {
+    font-weight: 600;
+    color: #fff;
+}
+
+/* Progress Bar Styles */
+.progress-bar {
+    height: 10px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 5px;
+    overflow: hidden;
+    width: 60%;
+}
+
+.progress {
+    height: 100%;
+    background-color: #f0a30a;
+    border-radius: 5px;
+    transition: width 0.3s ease;
+}
+
+/* Tool Info Styles */
+#tools-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1vh;
+}
+
+.tool-item {
+    display: flex;
+    align-items: center;
+    padding: 0.8vh 0;
+}
+
+.tool-icon {
+    width: 32px;
+    height: 32px;
+    background-color: rgba(240, 163, 10, 0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 10px;
+}
+
+.tool-icon i {
+    color: #f0a30a;
+}
+
+.tool-info {
+    flex: 1;
+}
+
+.tool-name {
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+.tool-durability {
+    width: 100%;
+    height: 6px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.durability-bar {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+.durability-good {
+    background-color: #4CAF50;
+}
+
+.durability-medium {
+    background-color: #FFC107;
+}
+
+.durability-poor {
+    background-color: #F44336;
+}
+
+/* Notification Styles */
+#notifications {
+    position: absolute;
+    bottom: 2vh;
+    right: 2vw;
+    width: 20vw;
+    display: flex;
+    flex-direction: column;
+    gap: 1vh;
+}
+
+.notification {
+    background-color: rgba(25, 30, 35, 0.9);
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    padding: 1.2vh 1.5vw;
+    color: #fff;
+    display: flex;
+    align-items: flex-start;
+    animation: slideIn 0.3s ease, fadeOut 0.5s ease 4.5s forwards;
+    border-left: 4px solid;
+}
+
+.notification.success {
+    border-color: #4CAF50;
+}
+
+.notification.error {
+    border-color: #F44336;
+}
+
+.notification.warning {
+    border-color: #FFC107;
+}
+
+.notification.info {
+    border-color: #2196F3;
+}
+
+.notification-icon {
+    margin-right: 12px;
+    font-size: 1.2em;
+}
+
+.notification.success .notification-icon {
+    color: #4CAF50;
+}
+
+.notification.error .notification-icon {
+    color: #F44336;
+}
+
+.notification.warning .notification-icon {
+    color: #FFC107;
+}
+
+.notification.info .notification-icon {
+    color: #2196F3;
+}
+
+.notification-content {
+    flex: 1;
+}
+
+.notification-message {
+    font-size: 0.9em;
+    opacity: 0.9;
+}
+
+/* Utility Classes */
+.hidden {
+    display: none !important;
+}
+
+/* Animations */
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+    }
+}
+
 /* Base styles */
 * {
     margin: 0;
@@ -10,7 +264,7 @@ body {
     width: 100vw;
     height: 100vh;
     overflow: hidden;
-    background: rgba(0, 0, 0, 0.01);
+    background: transparent;
 }
 
 #construction-ui {
@@ -20,6 +274,7 @@ body {
     justify-content: center;
     align-items: center;
     position: relative;
+    background: transparent;
 }
 
 /* Menu styles */

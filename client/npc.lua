@@ -225,156 +225,244 @@ function AddQBInteractions()
     })
 end
 
--- Function to open construction shop
+-- Function to open the construction shop
 function OpenConstructionShop()
-    local options = {
+    local sections = {
         {
-            title = 'Safety Equipment',
-            description = 'Required safety gear for construction work',
-            icon = 'fas fa-hard-hat',
+            title = "Shop Categories",
+            items = {
+                {
+                    title = "Safety Equipment",
+                    description = "Required safety gear for construction work",
+                    icon = "fas fa-hard-hat",
+                    onSelect = function()
+                        OpenSafetyEquipmentMenu()
+                    end
+                },
+                {
+                    title = "Tools",
+                    description = "Construction tools and equipment",
+                    icon = "fas fa-tools",
+                    onSelect = function()
+                        OpenToolsMenu()
+                    end
+                },
+                {
+                    title = "Materials",
+                    description = "Construction materials",
+                    icon = "fas fa-cubes",
+                    onSelect = function()
+                        OpenMaterialsMenu()
+                    end
+                }
+            }
+        }
+    }
+    
+    CreateSectionedMenu('construction_shop', 'Construction Shop', sections)
+end
+
+-- Function to open the safety equipment menu
+function OpenSafetyEquipmentMenu()
+    local safetyItems = {
+        {
+            title = "Construction Helmet",
+            description = "Protects your head from falling objects",
+            icon = "fas fa-hard-hat",
+            price = 75,
+            id = "construction_helmet",
             onSelect = function()
-                OpenSafetyEquipmentMenu()
+                TriggerServerEvent('vein-construction:server:buyItem', "construction_helmet", "safety")
             end
         },
         {
-            title = 'Tools',
-            description = 'Construction tools and equipment',
-            icon = 'fas fa-tools',
+            title = "Safety Vest",
+            description = "High visibility vest for safety on site",
+            icon = "fas fa-vest",
+            price = 50,
+            id = "safety_vest",
             onSelect = function()
-                OpenToolsMenu()
+                TriggerServerEvent('vein-construction:server:buyItem', "safety_vest", "safety")
             end
         },
         {
-            title = 'Materials',
-            description = 'Construction materials',
-            icon = 'fas fa-boxes',
+            title = "Work Gloves",
+            description = "Protects hands from injuries",
+            icon = "fas fa-mitten",
+            price = 35,
+            id = "work_gloves",
             onSelect = function()
-                OpenMaterialsMenu()
+                TriggerServerEvent('vein-construction:server:buyItem', "work_gloves", "safety")
+            end
+        },
+        {
+            title = "Full Safety Kit",
+            description = "All required safety equipment (helmet, vest, gloves)",
+            icon = "fas fa-shield-alt",
+            price = 150,
+            id = "safety_kit",
+            onSelect = function()
+                TriggerServerEvent('vein-construction:server:buyItem', "safety_kit", "safety")
             end
         }
     }
     
-    ShowMenu('construction_shop', 'Construction Shop', options)
-end
-
--- Function to open safety equipment menu
-function OpenSafetyEquipmentMenu()
-    local options = {
-        {
-            title = 'Construction Helmet',
-            description = 'Price: $50\nRequired for all construction work',
-            icon = 'fas fa-hard-hat',
-            onSelect = function()
-                TriggerServerEvent('vein-construction:server:buyItem', 'construction_helmet', 50)
-            end
-        },
-        {
-            title = 'Safety Vest',
-            description = 'Price: $30\nRequired for all construction work',
-            icon = 'fas fa-vest',
-            onSelect = function()
-                TriggerServerEvent('vein-construction:server:buyItem', 'safety_vest', 30)
-            end
-        },
-        {
-            title = 'Work Gloves',
-            description = 'Price: $20\nRequired for all construction work',
-            icon = 'fas fa-mitten',
-            onSelect = function()
-                TriggerServerEvent('vein-construction:server:buyItem', 'work_gloves', 20)
-            end
-        }
-    }
+    -- Format options with prices in description
+    local options = {}
+    for _, item in ipairs(safetyItems) do
+        table.insert(options, {
+            title = item.title,
+            description = item.description .. " - $" .. item.price,
+            icon = item.icon,
+            price = item.price,
+            id = item.id,
+            onSelect = item.onSelect
+        })
+    end
     
     ShowMenu('safety_equipment', 'Safety Equipment', options, 'construction_shop')
 end
 
--- Function to open tools menu
+-- Function to open the tools menu
 function OpenToolsMenu()
-    local options = {
+    local toolItems = {
         {
-            title = 'Hammer',
-            description = 'Price: $100\nRequired for hammering tasks',
-            icon = 'fas fa-hammer',
+            title = "Hammer",
+            description = "Basic construction hammer",
+            icon = "fas fa-hammer",
+            price = 100,
+            id = "hammer",
             onSelect = function()
-                TriggerServerEvent('vein-construction:server:buyItem', 'hammer', 100)
+                TriggerServerEvent('vein-construction:server:buyItem', "hammer", "tool")
             end
         },
         {
-            title = 'Power Drill',
-            description = 'Price: $200\nRequired for drilling tasks',
-            icon = 'fas fa-screwdriver',
+            title = "Power Drill",
+            description = "Electric drill for construction work",
+            icon = "fas fa-screwdriver",
+            price = 250,
+            id = "power_drill",
             onSelect = function()
-                TriggerServerEvent('vein-construction:server:buyItem', 'drill', 200)
+                TriggerServerEvent('vein-construction:server:buyItem', "power_drill", "tool")
             end
         },
         {
-            title = 'Welding Torch',
-            description = 'Price: $300\nRequired for welding tasks',
-            icon = 'fas fa-fire',
+            title = "Measuring Tape",
+            description = "For precise measurements",
+            icon = "fas fa-ruler",
+            price = 40,
+            id = "measuring_tape",
             onSelect = function()
-                TriggerServerEvent('vein-construction:server:buyItem', 'welding_torch', 300)
+                TriggerServerEvent('vein-construction:server:buyItem', "measuring_tape", "tool")
             end
         },
         {
-            title = 'Shovel',
-            description = 'Price: $150\nRequired for roadwork tasks',
-            icon = 'fas fa-shovel',
+            title = "Shovel",
+            description = "For digging and moving materials",
+            icon = "fas fa-snowplow",
+            price = 120,
+            id = "shovel",
             onSelect = function()
-                TriggerServerEvent('vein-construction:server:buyItem', 'shovel', 150)
+                TriggerServerEvent('vein-construction:server:buyItem', "shovel", "tool")
             end
         },
         {
-            title = 'Paint Roller',
-            description = 'Price: $80\nRequired for roadwork tasks',
-            icon = 'fas fa-paint-roller',
+            title = "Welding Torch",
+            description = "For metal construction work",
+            icon = "fas fa-fire",
+            price = 350,
+            id = "welding_torch",
             onSelect = function()
-                TriggerServerEvent('vein-construction:server:buyItem', 'paint_roller', 80)
+                TriggerServerEvent('vein-construction:server:buyItem', "welding_torch", "tool")
             end
         }
     }
     
-    ShowMenu('tools', 'Tools', options, 'construction_shop')
+    -- Format options with prices in description
+    local options = {}
+    for _, item in ipairs(toolItems) do
+        table.insert(options, {
+            title = item.title,
+            description = item.description .. " - $" .. item.price,
+            icon = item.icon,
+            price = item.price,
+            id = item.id,
+            onSelect = item.onSelect
+        })
+    end
+    
+    ShowMenu('tools_menu', 'Construction Tools', options, 'construction_shop')
 end
 
--- Function to open materials menu
+-- Function to open the materials menu
 function OpenMaterialsMenu()
-    local options = {
+    local materialItems = {
         {
-            title = 'Nails (Box)',
-            description = 'Price: $20\nRequired for hammering tasks',
-            icon = 'fas fa-thumbtack',
+            title = "Concrete Mix",
+            description = "50lb bag of concrete mix",
+            icon = "fas fa-cubes",
+            price = 45,
+            id = "concrete_mix",
             onSelect = function()
-                TriggerServerEvent('vein-construction:server:buyItem', 'nails', 20)
+                TriggerServerEvent('vein-construction:server:buyItem', "concrete_mix", "material")
             end
         },
         {
-            title = 'Screws (Box)',
-            description = 'Price: $25\nRequired for drilling tasks',
-            icon = 'fas fa-screwdriver',
+            title = "Lumber",
+            description = "Wood for construction",
+            icon = "fas fa-grip-lines",
+            price = 60,
+            id = "lumber",
             onSelect = function()
-                TriggerServerEvent('vein-construction:server:buyItem', 'screws', 25)
+                TriggerServerEvent('vein-construction:server:buyItem', "lumber", "material")
             end
         },
         {
-            title = 'Metal Rods (Bundle)',
-            description = 'Price: $50\nRequired for welding tasks',
-            icon = 'fas fa-grip-lines',
+            title = "Steel Beams",
+            description = "Metal structural support",
+            icon = "fas fa-stream",
+            price = 120,
+            id = "steel_beams",
             onSelect = function()
-                TriggerServerEvent('vein-construction:server:buyItem', 'metal_rods', 50)
+                TriggerServerEvent('vein-construction:server:buyItem', "steel_beams", "material")
             end
         },
         {
-            title = 'Asphalt Bucket',
-            description = 'Price: $40\nRequired for roadwork tasks',
-            icon = 'fas fa-fill-drip',
+            title = "Bricks",
+            description = "Stack of 50 bricks",
+            icon = "fas fa-border-all",
+            price = 85,
+            id = "bricks",
             onSelect = function()
-                TriggerServerEvent('vein-construction:server:buyItem', 'asphalt_bucket', 40)
+                TriggerServerEvent('vein-construction:server:buyItem', "bricks", "material")
+            end
+        },
+        {
+            title = "Paint",
+            description = "1 gallon of paint",
+            icon = "fas fa-fill-drip",
+            price = 30,
+            id = "paint",
+            onSelect = function()
+                TriggerServerEvent('vein-construction:server:buyItem', "paint", "material")
             end
         }
     }
     
-    ShowMenu('materials', 'Materials', options, 'construction_shop')
+    -- Format options with prices in description
+    local options = {}
+    for _, item in ipairs(materialItems) do
+        table.insert(options, {
+            title = item.title,
+            description = item.description .. " - $" .. item.price,
+            icon = item.icon,
+            price = item.price,
+            id = item.id,
+            onSelect = item.onSelect
+        })
+    end
+    
+    ShowMenu('materials_menu', 'Construction Materials', options, 'construction_shop')
 end
 
 -- Register server callback for buying items
@@ -405,6 +493,12 @@ end)
 
 RegisterNetEvent('vein-construction:client:repairTools', function()
     RepairTools()
+end)
+
+-- Register event handler for opening construction shop
+RegisterNetEvent('vein-construction:client:openConstructionShop')
+AddEventHandler('vein-construction:client:openConstructionShop', function()
+    OpenConstructionShop()
 end)
 
 -- Create NPC when resource starts

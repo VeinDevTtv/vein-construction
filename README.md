@@ -1,105 +1,96 @@
-# Vein Construction Job for FiveM
+# Vein Construction Job
 
-A comprehensive construction job script for FiveM servers using QBCore, with ox_inventory and ox_target integration.
-
-![Construction Job Banner](https://i.imgur.com/placeholder.png)
+A comprehensive construction job for FiveM QBCore servers. This resource provides a fully-featured construction job with rank progression, tool management, project assignments, and more.
 
 ## Features
 
-### Job System & Progression
-- Apply for the job at a construction site HQ
-- Four ranks with progression based on XP:
-  - **Apprentice**: Basic lifting & hammering jobs
-  - **Skilled Worker**: Unlocks welding & roadwork tasks
-  - **Foreman**: Assigns jobs to other workers, earns commissions
-  - **Site Manager**: Can start large projects & hire/fire workers
-- Players earn XP per completed task, leading to promotions
-
-### Construction Tasks
-- **Lifting Materials**: Pick up cement bags, bricks, or wood planks and carry them to a marked area
-- **Hammering & Drilling**: Use a hammer or drill to secure beams or construct walls
-- **Welding Metal Beams**: Use a welding torch to fuse metal beams together (with heat effects and sparks)
-- **Roadwork**: Fix potholes and mark road lanes
-
-### Random Events & Realism Features
-- **Tool Durability**: Tools break after 5-10 uses, requiring repairs
-- **Safety Inspections**: OSHA-style random checks with fines if not wearing proper gear
-- **Explosions**: Risk of explosions when welding near gas lines
-- **Eye Damage**: Blurred vision effect if welding without a mask
-
-### Payment & XP System
-- Payment varies based on rank ($500-$2,500)
-- XP system for rank progression:
-  - Apprentice: 0-100 XP
-  - Skilled Worker: 100-300 XP
-  - Foreman: 300-700 XP
-  - Site Manager: 700+ XP
-- Foremen and Site Managers earn commissions from subordinates' work
-
-### Integration with ox_inventory & ox_target
-- Job interactions use ox_target for a smooth experience
-- Tools & safety gear stored in ox_inventory
-- Job start/quit NPC uses ox_target
-- Players can't start work without proper gear (helmet, gloves, vest)
+- **Job Management**: Apply for the job, clock in/out, and manage your career
+- **Rank Progression**: Advance through multiple ranks (Apprentice, Skilled Worker, Foreman, Site Manager)
+- **Tool System**: Purchase, use, and repair tools with durability system
+- **Safety Requirements**: OSHA-compliant safety gear requirements
+- **Project Management**: Assign workers, track progress, and complete projects
+- **Modern UI**: Clean and intuitive UI for all interactions
+- **Dynamic Tasks**: Different tasks based on rank and location
+- **Random Events**: OSHA inspections, tool breakage, safety violations
 
 ## Dependencies
-- [qb-core](https://github.com/qbcore-framework/qb-core)
-- [ox_lib](https://github.com/overextended/ox_lib)
-- [ox_inventory](https://github.com/overextended/ox_inventory)
-- [ox_target](https://github.com/overextended/ox_target)
+
+- QBCore Framework
+- oxmysql
+- ox_lib (optional but recommended)
 
 ## Installation
 
-1. **Download the Resource**
-   - Download the latest release or clone the repository
-
-2. **Install Dependencies**
-   - Ensure you have all dependencies installed and configured properly
-
-3. **Database Setup**
-   - Run the included `vein-construction.sql` script in your database
-
-4. **Resource Installation**
+1. **Copy the Resource**: 
    - Place the `vein-construction` folder in your server's resources directory
+
+2. **Import Database Tables**:
+   - Import the `vein-construction.sql` file into your database
+
+3. **Add Items to QBCore Shared**:
+   - Copy items from `shared/construction_items.lua` to your `qb-core/shared/items.lua` file
+
+4. **Ensure the Resource**:
    - Add `ensure vein-construction` to your server.cfg
 
-5. **Item Setup**
-   - Add the items to your ox_inventory items.lua file or to your qb-core/shared/items.lua file
-   - The items needed are listed in the config.lua file
+5. **Configure the Resource** (Optional):
+   - Edit settings in `shared/config.lua` to match your server's economy and preferences
 
-6. **Configuration**
-   - Configure the locations and other settings in the config.lua file
-   - Adjust payment rates and XP values if needed
+## Usage
+
+### For Players
+
+1. **Apply for the Job**:
+   - Visit the Construction HQ (location configurable in config.lua)
+   - Use the job menu to apply
+
+2. **Clock In/Out**:
+   - You'll need to purchase and wear safety equipment (helmet, vest, gloves)
+   - Use the job menu at the HQ to clock in/out
+
+3. **Purchase Equipment**:
+   - Visit the construction shop to buy tools and safety gear
+   - Different ranks require different tools
+
+4. **Complete Tasks**:
+   - Tasks are assigned based on your rank
+   - Higher ranks get more complex and better-paying tasks
+
+5. **Advance Ranks**:
+   - Gain XP by completing tasks
+   - Automatic promotion when you reach XP thresholds
+
+### For Admins
+
+Admin commands for testing and management:
+
+- `/addconstructionxp [amount]` - Add XP to a player
+- `/setconstructionrank [rank]` - Set a player's rank
+- `/refreshconstructionsites` - Refresh construction site locations
+- `/addconstructionproject [name] [type] [budget]` - Create a new project
 
 ## Configuration
 
-You can modify various aspects of the resource in the `config.lua` file:
+The main configuration file is located at `shared/config.lua` and includes options for:
 
-- Construction site locations and task points
-- XP requirements for different ranks
-- Payment rates for different ranks
+- Job locations and blips
+- Rank requirements and benefits
+- Task rewards and XP
 - Tool durability settings
-- Required items for different tasks
 - Safety gear requirements
-- Random event chances and effects
+- Shop item prices
 
-## Commands
+## Adding Custom Tasks
 
-- `/constructiondata [id]` - Check construction job data (Admin only)
-- `/addconstructionxp [id] [amount]` - Add XP to a player (Admin only)
-- `/setconstructionrank [id] [rank]` - Set player's rank (Admin only)
-
-## Development
-
-This resource was developed by Vein. Feel free to submit issues or pull requests on our GitHub repository.
+1. Open `client/tasks.lua`
+2. Add a new task function following the existing pattern
+3. Register the task in the tasks table with rank requirements
 
 ## License
 
-This resource is released under the [MIT License](LICENSE).
+This resource is licensed under MIT License. See the LICENSE file for details.
 
 ## Credits
 
-- Vein - For development and design
-- QBCore - For the framework
-- Overextended - For ox_inventory and ox_target
-- The FiveM community - For support and inspiration 
+Created by Vein Development
+Contact: support@veindevelopment.com 

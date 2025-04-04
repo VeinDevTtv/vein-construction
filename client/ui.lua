@@ -23,6 +23,9 @@ local jobStatus = {
     }
 }
 
+-- Check if ox_lib is available
+local hasOxLib = GetResourceState('ox_lib') == 'started'
+
 -- Function to send data to the NUI
 function SendUIMessage(data)
     SendNUIMessage(data)
@@ -250,14 +253,212 @@ RegisterNetEvent('vein-construction:client:reopenMenu', function(menuId)
     end
 end)
 
--- Override existing function calls to use our UI system
+-- Function to show a menu with options
 function ShowMenu(id, title, options, parent)
-    ShowUIMenu(id, title, options, parent)
+    -- Initialize options as empty table if nil
+    options = options or {}
+    
+    if hasOxLib then
+        -- Create menu context
+        local contextOptions = {
+            id = id,
+            title = title,
+            options = options
+        }
+        
+        -- Add parent menu if provided
+        if parent then
+            contextOptions.menu = parent
+        end
+        
+        -- Register and show context menu
+        lib.registerContext(contextOptions)
+        lib.showContext(id)
+    else
+        -- Fallback to QBCore menu if ox_lib is not available
+        local qbMenu = {}
+        
+        -- Add header
+        table.insert(qbMenu, {
+            header = title,
+            isMenuHeader = true
+        })
+        
+        -- Add back button if parent is provided
+        if parent then
+            table.insert(qbMenu, {
+                header = "← Go Back",
+                txt = "Return to previous menu",
+                params = {
+                    event = "qb-menu:client:openMenu",
+                    args = {
+                        menuType = parent
+                    }
+                }
+            })
+        end
+        
+        -- Add menu options
+        for _, option in ipairs(options) do
+            local menuOption = {
+                header = option.title,
+                txt = option.description or "",
+                icon = option.icon,
+                params = {}
+            }
+            
+            -- Add select function if provided
+            if option.onSelect then
+                menuOption.params = {
+                    event = "vein-construction:client:menuSelect",
+                    args = {
+                        id = id,
+                        option = option.title,
+                        action = "select"
+                    }
+                }
+            end
+            
+            table.insert(qbMenu, menuOption)
+        end
+        
+        -- Show QBCore menu
+        exports['qb-menu']:openMenu(qbMenu)
+    end
 end
 
--- Override notification functions
-function SendNotification(title, message, type, icon)
-    ShowUINotification(title, message, type, icon)
+-- Function to handle menu selection for QBCore fallback
+RegisterNetEvent('vein-construction:client:menuSelect', function(data)
+    if not data or not data.id or not data.option then return end
+    
+    -- Find the selected option in the original menu
+    local menuId = data.id
+    local optionTitle = data.option
+    
+    -- This requires storing menu options somewhere, 
+    -- implementing a simplified version that retrieves by title
+    for _, menu in pairs(GetActiveTasks()) do
+        if menu.id == menuId then
+            for _, option in ipairs(menu.options) do
+                if option.title == optionTitle and option.onSelect then
+                    option.onSelect()
+                    return
+                end
+            end
+        end
+    end
+end)
+
+-- Function to send notification to player
+function SendNotification(message, type, duration)
+    type = type or 'primary'
+    duration = duration or 5000
+    
+    if hasOxLib then
+        lib.notify({
+            title = 'Construction Job',
+            description = message,
+            type = type,
+            duration = duration
+        })
+    else
+        QBCore.Functions.Notify(message, type, duration)
+    end
+end
+
+-- Function to show alert message
+function ShowAlert(message, type, icon)
+    type = type or 'info'
+    icon = icon or 'fas fa-info-circle'
+    
+    if hasOxLib then
+        lib.showTextUI(message, {
+            position = "right-center",
+            icon = icon,
+            style = {
+                borderRadius = 0,
+                backgroundColor = type == 'error' and '#AA0000' or '#2D3A4A',
+                color = 'white'
+            }
+        })
+        Wait(3000)
+        lib.hideTextUI()
+    else
+        QBCore.Functions.Notify(message, type, 3000)
+    end
+end
+
+-- Function to display progress bar
+function ShowProgressBar(label, duration, canCancel, animation)
+    if hasOxLib then
+        return lib.progressBar({
+            duration = duration,
+            label = label,
+            useWhileDead = false,
+            canCancel = canCancel or false,
+            disable = {
+                car = true,
+                move = true,
+                combat = true
+            },
+            anim = animation or {
+                dict = "mini@repair",
+                clip = "fixing_a_ped"
+            }
+        })
+    else
+        if animation then
+            loadAnimDict(animation.dict)
+            TaskPlayAnim(PlayerPedId(), animation.dict, animation.clip, 8.0, -8.0, -1, 0, 0, false, false, false)
+        end
+        
+        QBCore.Functions.Progressbar("construction_task", label, duration, canCancel, {
+            disableMovement = true,
+            disableCarMovement = true,
+            disableMouse = false,
+            disableCombat = true,
+        }, {}, {}, {}, function() -- Done
+            if animation then
+                StopAnimTask(PlayerPedId(), animation.dict, animation.clip, 1.0)
+            end
+            return true
+        end, function() -- Cancel
+            if animation then
+                StopAnimTask(PlayerPedId(), animation.dict, animation.clip, 1.0)
+            end
+            return false
+        end)
+        
+        -- This is not ideal, but QBCore progressbar is not synchronous
+        Wait(duration + 500)
+        return true
+    end
+end
+
+-- Helper function to load animation dictionary
+function loadAnimDict(dict)
+    while not HasAnimDictLoaded(dict) do
+        RequestAnimDict(dict)
+        Wait(5)
+    end
+end
+
+-- Active tasks storage for menu handling
+local activeTasks = {}
+
+function RegisterActiveTask(id, options)
+    activeTasks[id] = {
+        id = id,
+        options = options
+    }
+end
+
+function RemoveActiveTask(id)
+    activeTasks[id] = nil
+end
+
+function GetActiveTasks()
+    return activeTasks
 end
 
 -- Helper function to create sectioned menus
@@ -540,6 +741,7 @@ exports('ToggleStatusDisplay', ToggleStatusDisplay)
 exports('UpdateJobStatus', UpdateJobStatus)
 exports('CreateSectionedMenu', CreateSectionedMenu)
 exports('CheckSafetyGear', CheckSafetyGear)
+exports('ShowAlert', ShowAlert)
 
 -- Add debug command to test the UI
 RegisterCommand('testconstructionui', function()

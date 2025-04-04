@@ -3,81 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vein Construction</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+    <title>Construction Job UI</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <div id="construction-ui">
-        <!-- Status display (for job status, current task, etc.) -->
-        <div id="status-display" class="hidden">
-            <div class="status-title">
-                <i class="fas fa-hard-hat"></i>
-                <span>Job Status</span>
-            </div>
-            <div class="status-content">
-                <div class="status-item">
-                    <div class="status-label">Duty Status:</div>
-                    <div class="status-value" id="status-duty">Off Duty</div>
+    <div id="app">
+        <!-- Main container that holds all UI elements -->
+        <div id="main-container" class="hidden">
+            <!-- Job information panel -->
+            <div id="job-info" class="panel">
+                <div class="panel-header">
+                    <i class="fas fa-hard-hat"></i>
+                    <h2>Construction Job</h2>
                 </div>
-                <div class="status-item">
-                    <div class="status-label">Current Rank:</div>
-                    <div class="status-value" id="status-rank">Apprentice</div>
-                </div>
-                <div class="status-item">
-                    <div class="status-label">Experience:</div>
-                    <div class="status-value" id="status-xp">0 XP</div>
-                </div>
-                <div class="status-item">
-                    <div class="status-label">Current Site:</div>
-                    <div class="status-value" id="status-site">None</div>
-                </div>
-                <div class="status-item">
-                    <div class="status-label">Current Task:</div>
-                    <div class="status-value" id="status-task">None</div>
-                </div>
-                <div class="progress-container">
-                    <div class="progress-bar" id="status-progress-bar" style="width: 0%"></div>
+                <div class="panel-content">
+                    <div class="info-row">
+                        <span class="info-label">Current Rank:</span>
+                        <span id="current-rank" class="info-value">Apprentice</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">XP Progress:</span>
+                        <div class="progress-bar">
+                            <div id="xp-progress" class="progress" style="width: 25%"></div>
+                        </div>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Next Rank:</span>
+                        <span id="next-rank" class="info-value">Skilled Worker</span>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Main menu container -->
-        <div id="menu-container" class="hidden">
-            <div class="menu-header">
-                <h2 id="menu-title">Menu Title</h2>
-                <button id="close-menu"><i class="fas fa-times"></i></button>
-            </div>
-            <div id="menu-content">
-                <!-- Menu options will be inserted here -->
-            </div>
-            <div id="menu-footer">
-                <button id="back-button" class="hidden"><i class="fas fa-arrow-left"></i> Back</button>
-                <div class="footer-info" id="footer-info"></div>
-            </div>
-        </div>
-
-        <!-- Notification container -->
-        <div id="notification-container">
-            <!-- Notifications will be inserted here -->
-        </div>
-
-        <!-- Progress overlay (for tasks/actions with progress bars) -->
-        <div id="progress-overlay" class="hidden">
-            <div class="progress-content">
-                <div class="progress-icon">
-                    <i class="fas fa-spinner fa-spin"></i>
+            <!-- Tool durability panel -->
+            <div id="tool-info" class="panel">
+                <div class="panel-header">
+                    <i class="fas fa-tools"></i>
+                    <h2>Tool Condition</h2>
                 </div>
-                <div class="progress-label" id="progress-label">Loading...</div>
-                <div class="progress-container">
-                    <div class="progress-bar" id="progress-bar" style="width: 0%"></div>
+                <div class="panel-content">
+                    <div id="tools-container">
+                        <!-- Tools will be dynamically added here -->
+                    </div>
                 </div>
+            </div>
+
+            <!-- Notification panel -->
+            <div id="notifications" class="hidden">
+                <!-- Notifications will be dynamically added here -->
             </div>
         </div>
     </div>
 
     <script src="js/app.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/js/all.min.js"></script>
 </body>
 </html> 
