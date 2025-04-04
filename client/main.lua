@@ -225,15 +225,15 @@ function OpenJobMenu()
     local options = {
         {
             title = 'Apply for Construction Job',
-            description = 'Apply to work as a construction worker',
+            description = 'Start working as a construction worker',
             icon = 'fas fa-hard-hat',
             onSelect = function()
                 ApplyForJob()
             end
         },
         {
-            title = 'Construction Job Information',
-            description = 'Learn more about the job',
+            title = 'Job Information',
+            description = 'Learn about the construction job',
             icon = 'fas fa-info-circle',
             onSelect = function()
                 ShowJobInformation()
@@ -244,12 +244,12 @@ function OpenJobMenu()
     ShowMenu('construction_job_menu', 'Construction Job', options)
 end
 
--- Show job information
+-- Show job information menu
 function ShowJobInformation()
     local options = {
         {
-            title = 'Job Ranks',
-            description = 'View available job ranks',
+            title = 'Available Ranks',
+            description = 'View job ranks and requirements',
             icon = 'fas fa-user-tie',
             onSelect = function()
                 ShowRankInformation()
@@ -257,7 +257,7 @@ function ShowJobInformation()
         },
         {
             title = 'Job Tasks',
-            description = 'Learn about construction tasks',
+            description = 'Learn about available tasks',
             icon = 'fas fa-tasks',
             onSelect = function()
                 ShowTaskInformation()
@@ -273,27 +273,7 @@ function ShowJobInformation()
         }
     }
     
-    ShowMenu('construction_job_info', 'Job Information', options, 'construction_job_menu')
-end
-
--- Show rank information
-function ShowRankInformation()
-    local options = {}
-    
-    for _, rank in ipairs(Config.Ranks) do
-        local description = 'XP Needed: ' .. rank.xpNeeded .. '\nPay Range: $' .. rank.payment.min .. ' - $' .. rank.payment.max
-        if rank.commission then
-            description = description .. '\nCommission: ' .. (rank.commission * 100) .. '%'
-        end
-        
-        table.insert(options, {
-            title = rank.label,
-            description = description,
-            icon = 'fas fa-user-tie'
-        })
-    end
-    
-    ShowMenu('rank_information', 'Job Ranks', options, 'construction_job_info')
+    ShowMenu('job_info', 'Job Information', options, 'construction_job_menu')
 end
 
 -- Show task information
@@ -301,50 +281,55 @@ function ShowTaskInformation()
     local options = {
         {
             title = 'Lifting Materials',
-            description = 'Pick up and carry materials to designated areas',
+            description = 'Carry construction materials to designated areas',
             icon = 'fas fa-weight-hanging'
         },
         {
-            title = 'Hammering & Drilling',
-            description = 'Secure beams and construct walls',
+            title = 'Hammering',
+            description = 'Use a hammer to secure beams and structures',
             icon = 'fas fa-hammer'
         },
         {
+            title = 'Drilling',
+            description = 'Drill holes and secure parts with screws',
+            icon = 'fas fa-cog'
+        },
+        {
             title = 'Welding',
-            description = 'Fuse metal beams together',
+            description = 'Weld metal beams and structures together',
             icon = 'fas fa-fire'
         },
         {
             title = 'Roadwork',
-            description = 'Fix potholes and mark road lanes',
+            description = 'Fix roads and paint markings',
             icon = 'fas fa-road'
         }
     }
     
-    ShowMenu('task_information', 'Construction Tasks', options, 'construction_job_info')
+    ShowMenu('task_info', 'Available Tasks', options, 'job_info')
 end
 
 -- Show equipment information
 function ShowEquipmentInformation()
     local options = {
         {
-            title = 'Tools',
-            description = 'Hammer, Drill, Welding Torch, Shovel, Paint Roller',
-            icon = 'fas fa-tools'
-        },
-        {
-            title = 'Safety Gear',
-            description = 'Construction Helmet, Safety Vest, Work Gloves',
+            title = 'Safety Equipment',
+            description = 'Required: Hard Hat, Safety Vest, Work Gloves',
             icon = 'fas fa-hard-hat'
         },
         {
-            title = 'Tool Durability',
-            description = 'Tools can break and need to be repaired or replaced',
-            icon = 'fas fa-wrench'
+            title = 'Basic Tools',
+            description = 'Hammer, Work Belt',
+            icon = 'fas fa-hammer'
+        },
+        {
+            title = 'Advanced Tools',
+            description = 'Power Drill, Welding Torch, Paint Roller',
+            icon = 'fas fa-tools'
         }
     }
     
-    ShowMenu('equipment_information', 'Required Equipment', options, 'construction_job_info')
+    ShowMenu('equipment_info', 'Required Equipment', options, 'job_info')
 end
 
 -- Apply for the job
@@ -387,14 +372,11 @@ function ApplyForJob()
             coords = { x = 0.1, y = 0.02, z = 0.05 },
             rotation = { x = 10.0, y = 0.0, z = 0.0 },
         }, {}, function() -- Done
-            -- Done callback
+            TriggerServerEvent('vein-construction:server:setJob')
         end, function() -- Cancel
-            -- Cancel callback
+            QBCore.Functions.Notify('Cancelled application', 'error')
         end)
     end
-    
-    -- Set the job
-    TriggerServerEvent('vein-construction:server:setJob')
 end
 
 -- Open job management menu

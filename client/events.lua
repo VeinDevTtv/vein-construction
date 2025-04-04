@@ -40,6 +40,20 @@ function ShowMenu(id, title, options, parent)
             contextOptions.menu = parent
         end
         
+        -- Ensure each option has required fields
+        for i, option in ipairs(options) do
+            if not option.title then option.title = 'Untitled' end
+            if not option.description then option.description = '' end
+            if not option.icon then option.icon = 'fas fa-circle' end
+            
+            -- Convert onSelect to event if needed
+            if option.onSelect then
+                local eventName = ('__ox_cb_%s_%s'):format(id, i)
+                AddEventHandler(eventName, option.onSelect)
+                option.event = eventName
+            end
+        end
+        
         lib.registerContext(contextOptions)
         lib.showContext(id)
     else
@@ -47,9 +61,9 @@ function ShowMenu(id, title, options, parent)
         local menuItems = {}
         for i, option in ipairs(options) do
             table.insert(menuItems, {
-                header = option.title,
+                header = option.title or 'Untitled',
                 txt = option.description or '',
-                icon = option.icon,
+                icon = option.icon or 'fas fa-circle',
                 params = {
                     event = option.event,
                     args = option.args,
@@ -64,10 +78,11 @@ function ShowMenu(id, title, options, parent)
             align = 'top-left',
             elements = menuItems
         }, function(data, menu)
-            if data.current and data.current.value then
-                local selected = options[data.current.value]
-                if selected and selected.onSelect then
-                    selected.onSelect()
+            if data.current and data.current.params then
+                if data.current.params.isAction and data.current.params.action then
+                    data.current.params.action()
+                elseif data.current.params.event then
+                    TriggerEvent(data.current.params.event, data.current.params.args)
                 end
             end
         end, function(data, menu)
@@ -246,7 +261,7 @@ RegisterNetEvent('vein-construction:client:displayActiveProjects', function(proj
     end
     
     ShowMenu('active_projects', 'Active Projects', options, 'project_menu')
-end)
+end
 
 -- View details of a specific project
 function ViewProjectDetails(project)
